@@ -590,7 +590,6 @@ class TaskExecutor {
   static MAX_VIDEO_POLL_ATTEMPTS = 300;
   static VIDEO_POLL_INTERVAL = 30000;
   static MAX_IMAGE_POLL_ATTEMPTS = 120;
-  static IMAGE_POLL_INTERVAL = 10000;
   static MAX_NETWORK_ERRORS = 5;
   static MAX_COMPLETED_TASKS = 50;
   static MAX_FAILED_TASKS = 50;
@@ -994,7 +993,7 @@ class TaskExecutor {
               if (finalImgSrc.startsWith("data:")) {
                 const arr = finalImgSrc.split(",");
                 const mime = arr[0].match(/:(.*?);/)?.[1] || "image/png";
-                const bstr = atob(arr[1]);
+                const bstr = Buffer.from(arr[1], "base64").toString("binary");
                 let n = bstr.length;
                 const u8arr = new Uint8Array(n);
                 while (n--) {
@@ -2574,6 +2573,7 @@ function setupIpcHandlers() {
   });
   // Shell 操作
   electron.ipcMain.handle("shell:open-external", async (_, url) => {
+    const u = String(url||""); if (!u.startsWith("https://") && !u.startsWith("http://")) return { ok: false, error: "仅支持 http/https 链接" };
     try { await electron.shell.openExternal(url); return { ok: true }; } catch (e) { return { ok: false, error: e.message }; }
   });
   electron.ipcMain.handle("shell:open-path", async (_, filePath) => {
@@ -2583,7 +2583,7 @@ function setupIpcHandlers() {
   electron.ipcMain.handle("app:get-version", () => electron.app.getVersion());
   electron.ipcMain.handle("app:get-arch", () => process.arch);
   electron.ipcMain.handle("app:is-packaged", () => electron.app.isPackaged);
-  electron.ipcMain.handle("app:check-for-update", async () => {
+  electron.ipcMain.handle("updater-check", async () => {
     if (!electron.app.isPackaged) return { ok: false, error: "开发模式不支持自动更新" };
     try {
       const result = await autoUpdater.checkForUpdates();
@@ -2592,10 +2592,10 @@ function setupIpcHandlers() {
       return { ok: false, error: e.message };
     }
   });
-  electron.ipcMain.handle("app:install-update", () => {
+  electron.ipcMain.handle("updater-quit-install", () => {
     autoUpdater.quitAndInstall();
   });
-  electron.ipcMain.handle("app:download-update", async () => {
+  electron.ipcMain.handle("updater-download", async () => {
     if (!electron.app.isPackaged) return { ok: false, error: "开发模式不支持" };
     try {
       await autoUpdater.downloadUpdate();
@@ -2700,7 +2700,7 @@ function createWindow() {
       lastCrashAt = now;
       const delay = CRASH_BACKOFF_MS[Math.min(crashCount - 1, CRASH_BACKOFF_MS.length - 1)];
       console.warn(`[主进程] 尝试重载 (${crashCount}/${MAX_CRASH_RELOADS})，延迟 ${delay / 1000}s`);
-      setTimeout(() => {
+      const updateTimer = setTimeout(() => {
         if (!mainWindow.isDestroyed()) {
           mainWindow.reload();
         }
@@ -2711,7 +2711,7 @@ function createWindow() {
   });
   mainWindow.webContents.on("did-fail-load", (event, errorCode, errorDescription) => {
     console.error("[主进程] 页面加载失败:", errorCode, errorDescription);
-    setTimeout(() => {
+    const updateTimer = setTimeout(() => {
       if (!mainWindow.isDestroyed()) {
         if (utils.is.dev && process.env["ELECTRON_RENDERER_URL"]) {
           mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
@@ -2961,6 +2961,7 @@ electron.app.whenReady().then(() => {
     autoUpdater.autoDownload = false;
     autoUpdater.on("update-available", (info) => {
       const win = electron.BrowserWindow.getAllWindows()[0];
+      if (win) win.webContents.send("updater-message", { type: "update-available", version: info.version });
       if (!win) return;
       electron.dialog.showMessageBox(win, {
         type: "info",
@@ -2980,10 +2981,11 @@ electron.app.whenReady().then(() => {
     });
     autoUpdater.on("download-progress", (progress) => {
       const win = electron.BrowserWindow.getAllWindows()[0];
-      if (win) win.webContents.send("update:download-progress", progress);
+      if (win) win.webContents.send("updater-message", { type: "download-progress", progress });
     });
     autoUpdater.on("update-downloaded", () => {
       const win = electron.BrowserWindow.getAllWindows()[0];
+      if (win) win.webContents.send("updater-message", { type: "update-downloaded" });
       if (!win) return;
       electron.dialog.showMessageBox(win, {
         type: "info",
@@ -3001,10 +3003,15 @@ electron.app.whenReady().then(() => {
     });
     autoUpdater.on("error", (err) => {
       console.error("[autoUpdater]", err.message);
+      const win = electron.BrowserWindow.getAllWindows()[0];
+      if (win) win.webContents.send("updater-message", { type: "error", error: err.message });
     });
-    setTimeout(() => {
+    const updateTimer = setTimeout(() => {
       autoUpdater.checkForUpdates().catch(() => {});
     }, 5000);
+    electron.app.on("before-quit", () => {
+      clearTimeout(updateTimer);
+    });
   }
   // Seedance 素材库全局快捷键（从配置读取，默认 CommandOrControl+Shift+A）
   try {
