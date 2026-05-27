@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="
+        default-src 'self';
+        script-src 'self' 'unsafe-eval' 'unsafe-inline';
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' data: blob: https: sanshiman:;
+        media-src 'self' data: blob: https: sanshiman:;
+        connect-src 'self' https: http: ws: wss: blob: data:;
+        font-src 'self' data:;
+      "
+    />
+    <title>叁视漫</title>
+
+    <!-- 字体：使用系统字体栈，避免依赖 CDN（Electron 常离线使用） -->
+    <script type="module" crossorigin src="./assets/index-BujjGe6O.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/vendor-zustand-VeFn8IKR.js">
+    <link rel="modulepreload" crossorigin href="./assets/vendor-flow-DdC3WT5u.js">
+    <link rel="modulepreload" crossorigin href="./assets/vendor-icons-DmAdBLBT.js">
+    <link rel="modulepreload" crossorigin href="./assets/vendor-marked-D9eDbhZJ.js">
+    <link rel="stylesheet" crossorigin href="./assets/index-CD2bkXOj.css">
+    <link rel="stylesheet" href="./assets/progress-hud.css">
+    <link rel="stylesheet" href="./assets/ui-upgrades.css">
+    <!-- 强制暗色主题 + ReactFlow 画布透明，露出 starfield canvas -->
+    <style>
+      :root, .theme-light, .theme-dark, html, body, #root {
+        --bg-base: #09090b !important;
+        --bg-panel: #18181b !important;
+        --bg-secondary: #18181b !important;
+        --text-primary: #f4f4f5 !important;
+        --text-secondary: #a1a1aa !important;
+        --text-muted: #71717a !important;
+        --border-color: #ffffff1a !important;
+        background-color: #020308 !important;
+        background: #020308 !important;
+      }
+      .react-flow,
+      .react-flow__background,
+      .react-flow__renderer,
+      .react-flow__viewport,
+      .react-flow__pane,
+      .react-flow__node {
+        background: transparent !important;
+        background-color: transparent !important;
+      }
+      .react-flow {
+        --xy-background-color: transparent !important;
+        --xy-background-color-default: transparent !important;
+      }
+      /* 强制所有可编辑区域实色暗背景 — 无视 Tailwind 透明类 */
+      textarea,
+      textarea.nodrag,
+      textarea.nowheel,
+      input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+      select,
+      [contenteditable="true"],
+      [contentEditable="true"],
+      .nodrag.nowheel,
+      .node-wrapper,
+      .react-flow__node > div {
+        background-color: #1e2127 !important;
+        background: #1e2127 !important;
+        color: #c0c4c8 !important;
+        --tw-bg-opacity: 1 !important;
+      }
+      textarea:focus,
+      input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+      select:focus,
+      [contenteditable="true"]:focus,
+      [contentEditable="true"]:focus,
+      .nodrag.nowheel:focus {
+        background-color: #24272e !important;
+        background: #24272e !important;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script src="./assets/progress-hud.js"></script>
+    <script src="./assets/wheel-scroll-fix.js"></script>
+    <script src="./assets/starfield-bg.js"></script>
+    <script>
+      window.onerror = function (message, source, lineno, colno, error) {
+        document.getElementById('root').innerHTML =
+          '<div style="color:white; z-index:99999; position:absolute; top:20px; left:20px; font-size: 20px;">' +
+          message +
+          '<br/>' +
+          source +
+          ':' +
+          lineno +
+          '</div>'
+      }
+    </script>
+  </body>
+</html>

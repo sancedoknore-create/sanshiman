@@ -1,0 +1,76 @@
+{
+  "name": "sanshiman",
+  "version": "1.0.4",
+  "description": "叁视漫 客户端",
+  "main": "./out/main/index.js",
+  "author": "example.com",
+  "homepage": "https://electron-vite.org",
+  "dependencies": {
+    "@electron-toolkit/preload": "^3.0.2",
+    "@electron-toolkit/utils": "^4.0.0",
+    "@xyflow/react": "^12.10.1",
+    "better-sqlite3": "^12.6.2",
+    "dompurify": "^3.4.2",
+    "electron-updater": "^6.8.3",
+    "iconv-lite": "^0.7.2",
+    "lucide-react": "^0.575.0",
+    "marked": "^17.0.3",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "electron-builder": "^26.8.1"
+  },
+  "build": {
+    "appId": "com.sanshiman.app",
+    "productName": "sanshiman",
+    "publish": {
+      "provider": "github",
+      "owner": "sancedoknore-create",
+      "repo": "sanshiman"
+    },
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "package.json",
+      "resources/**/*",
+      "node_modules/**/*",
+      "!node_modules/electron-builder/**",
+      "!node_modules/electron-winstaller/**",
+      "!node_modules/app-builder-bin/**",
+      "!node_modules/7zip-bin/**",
+      "!node_modules/electron/**",
+      "!node_modules/@electron/windows-sign/**",
+      "!dist/**"
+    ],
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**/*"
+    ],
+    "win": {
+      "icon": "resources/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "language": "2052",
+      "installerIcon": "resources/icon.ico",
+      "uninstallerIcon": "resources/icon.ico",
+      "installerHeaderIcon": "resources/icon.ico",
+      "shortcutName": "叁视漫",
+      "allowElevation": true,
+      "runAfterFinish": false,
+      "include": "resources/installer.nsh"
+    }
+  }
+}

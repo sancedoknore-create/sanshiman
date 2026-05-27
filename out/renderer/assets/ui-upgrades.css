@@ -1,0 +1,430 @@
+/* ==============================================
+   叁视漫 UI 视觉升级
+   ============================================== */
+
+/* -------------------------------------------
+   1. 节点类型色条 - 左侧3px彩色边框区分类型
+   ------------------------------------------- */
+.node-wrapper[data-node-type="gen-image"] {
+  border-left: 3px solid #3b82f6 !important;
+}
+.node-wrapper[data-node-type="gen-video"] {
+  border-left: 3px solid #8b5cf6 !important;
+}
+.node-wrapper[data-node-type="input-image"] {
+  border-left: 3px solid #10b981 !important;
+}
+.node-wrapper[data-node-type="video-input"] {
+  border-left: 3px solid #f59e0b !important;
+}
+.node-wrapper[data-node-type="text-node"] {
+  border-left: 3px solid #6b7280 !important;
+}
+.node-wrapper[data-node-type="alchemy-node"] {
+  border-left: 3px solid #c89445 !important;
+}
+.node-wrapper[data-node-type="extract-characters-scenes"] {
+  border-left: 3px solid #14b8a6 !important;
+}
+
+/* -------------------------------------------
+   2. 运行中节点发光边框 - 呼吸灯效果
+   ------------------------------------------- */
+.node-wrapper[data-node-status="running"] {
+  --glow-color: var(--primary-color, #3b82f6);
+  animation: node-glow 2s ease-in-out infinite;
+}
+.node-wrapper[data-node-status="running"][data-node-type="gen-image"] {
+  --glow-color: #3b82f6;
+}
+.node-wrapper[data-node-status="running"][data-node-type="gen-video"] {
+  --glow-color: #8b5cf6;
+}
+.node-wrapper[data-node-status="running"][data-node-type="alchemy-node"] {
+  --glow-color: #c89445;
+}
+
+@keyframes node-glow {
+  0%, 100% {
+    box-shadow: 0 0 6px color-mix(in srgb, var(--glow-color) 25%, transparent),
+                0 0 2px color-mix(in srgb, var(--glow-color) 40%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 14px color-mix(in srgb, var(--glow-color) 45%, transparent),
+                0 0 28px color-mix(in srgb, var(--glow-color) 20%, transparent);
+  }
+}
+
+/* 完成瞬间闪烁 */
+.node-wrapper[data-node-status="completed"] {
+  animation: node-complete-flash 0.5s ease-out;
+}
+@keyframes node-complete-flash {
+  0%   { box-shadow: 0 0 16px color-mix(in srgb, #10b981 50%, transparent); }
+  100% { box-shadow: 0 0 0 transparent; }
+}
+
+/* 失败抖动 */
+.node-wrapper[data-node-status="error"] {
+  animation: node-error-shake 0.4s ease-out;
+}
+@keyframes node-error-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-2px); }
+  40% { transform: translateX(2px); }
+  60% { transform: translateX(-1px); }
+  80% { transform: translateX(1px); }
+}
+
+/* -------------------------------------------
+   3. 选中节点发光环
+   ------------------------------------------- */
+.react-flow__node.selected .node-wrapper {
+  box-shadow: 0 0 0 2px var(--primary-color, #3b82f6),
+              0 0 10px color-mix(in srgb, var(--primary-color, #3b82f6) 25%, transparent) !important;
+}
+
+/* -------------------------------------------
+   4. 模态框入场动画
+   ------------------------------------------- */
+/* Modal backdrop + content */
+div[class*="bg-black/50"][class*="flex items-center justify-center"] {
+  animation: modal-fade-in 0.2s ease-out;
+}
+div[class*="bg-black/50"][class*="flex items-center justify-center"] > div {
+  animation: modal-slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes modal-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes modal-slide-up {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* -------------------------------------------
+   5. Toast 通知滑入
+   ------------------------------------------- */
+div[class*="bg-green-500"][class*="fixed"] {
+  animation: toast-slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes toast-slide-in {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* -------------------------------------------
+   6. 画布暗角氛围
+   ------------------------------------------- */
+.react-flow__attribution {
+  opacity: 0.4;
+}
+
+/* -------------------------------------------
+   7. 连接线 hover 发光
+   ------------------------------------------- */
+.react-flow__edge:hover .react-flow__edge-path {
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--primary-color, #3b82f6) 40%, transparent));
+  transition: filter 0.2s ease;
+}
+
+/* -------------------------------------------
+   8. 画布网格点柔化
+   ------------------------------------------- */
+.react-flow__background pattern circle {
+  opacity: 0.3;
+}
+
+/* -------------------------------------------
+   9. 飞船操控台面板 — 全局输入框
+   ============================================ */
+
+/* --- 9a. 面板外框（input/textarea/select 的父级容器） --- */
+/* 给包含输入框的容器加螺丝装饰 */
+.cockpit-input-wrapper {
+  position: relative;
+  background: #3e4148;
+  padding: 3px;
+  border-radius: 3px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    0 3px 6px rgba(0,0,0,0.4),
+    0 0 0 1px #2a2d33;
+}
+.cockpit-input-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  z-index: 3;
+  background:
+    radial-gradient(2px 2px at 10px 50%, #5a5e66 35%, #3a3d44 65%, transparent),
+    radial-gradient(2px 2px at calc(100% - 10px) 50%, #5a5e66 35%, #3a3d44 65%, transparent);
+  border-radius: 3px;
+}
+.cockpit-input-wrapper:focus-within {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    0 3px 6px rgba(0,0,0,0.4),
+    0 0 0 1px #2a2d33,
+    0 0 0 3px rgba(100,160,200,0.12);
+}
+
+/* --- 9b. 铭牌标签 --- */
+.cockpit-label {
+  background: #4a4d55;
+  color: #999;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 2px 2px 0 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 1px 2px rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: 'Courier New', monospace;
+}
+.cockpit-label .cockpit-indicator {
+  width: 5px; height: 5px;
+  background: #3a3;
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(50,180,50,0.5);
+  flex-shrink: 0;
+  transition: all 0.25s ease;
+}
+.cockpit-input-wrapper:focus-within ~ .cockpit-label .cockpit-indicator,
+.cockpit-label:has(~ .cockpit-input-wrapper:focus-within) .cockpit-indicator,
+.cockpit-input-wrapper:focus-within .cockpit-indicator,
+:focus-within > .cockpit-indicator {
+  background: #5d5;
+  box-shadow: 0 0 6px rgba(80,220,80,0.7), 0 0 12px rgba(80,220,80,0.3);
+}
+
+/* --- 9c. 凹陷输入区 — 全局 input/textarea/select + contentEditable --- */
+input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+textarea,
+select,
+[contenteditable="true"],
+[contentEditable="true"] {
+  font-family: 'Courier New', monospace !important;
+  background: #25282d !important;
+  color: #c0c4c8 !important;
+  border: 1px solid #1a1d22 !important;
+  border-top-color: #15181c !important;
+  border-left-color: #15181c !important;
+  border-right-color: #35383e !important;
+  border-bottom-color: #35383e !important;
+  border-radius: 2px !important;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5) !important;
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
+  outline: none !important;
+}
+
+input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"])::placeholder,
+textarea::placeholder {
+  color: #3e4148 !important;
+  opacity: 1 !important;
+}
+
+/* 凹陷区 — focus 激活 */
+input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+textarea:focus,
+select:focus,
+[contenteditable="true"]:focus,
+[contentEditable="true"]:focus {
+  background: #1e2126 !important;
+  color: #dce0e4 !important;
+  border-top-color: #0d0f12 !important;
+  border-left-color: #0d0f12 !important;
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,0.6),
+    0 0 0 2px rgba(120,160,200,0.18) !important;
+}
+
+/* --- 9d. disabled --- */
+input:disabled,
+textarea:disabled,
+select:disabled,
+[contenteditable="false"] {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+  filter: grayscale(40%) !important;
+}
+
+/* --- 9e. select 箭头 --- */
+select {
+  cursor: pointer !important;
+  appearance: none !important;
+  padding-right: 28px !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 8px center !important;
+  background-color: #25282d !important;
+}
+
+/* --- 9f. textarea 细节 --- */
+textarea {
+  line-height: 1.6 !important;
+  -webkit-font-smoothing: antialiased !important;
+  resize: vertical !important;
+}
+
+/* --- 9g. type="password" --- */
+input[type="password"] {
+  letter-spacing: 1px;
+  -webkit-text-security: disc;
+}
+
+/* --- 9h. range 滑块（保持原样，只改轨道） --- */
+input[type="range"] {
+  accent-color: #5577aa;
+}
+
+/* --- 9i. checkbox（保留原生，改 accent） --- */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: #5577aa;
+}
+
+/* --- 9j. 聊天输入区特殊处理 --- */
+/* 聊天 textarea 要稍微亮一点，因为它是主要交互区 */
+#root div[class*="flex"] > textarea,
+#root div[class*="flex"] > [contenteditable="true"],
+#root div[class*="flex"] > [contentEditable="true"],
+div[class*="chat"] textarea,
+div[class*="chat"] [contenteditable="true"],
+div[class*="chat"] [contentEditable="true"],
+form textarea,
+form [contenteditable="true"],
+form [contentEditable="true"] {
+  background: #2a2d34 !important;
+  color: #d0d4d8 !important;
+  border-top-color: #1a1d22 !important;
+  border-left-color: #1a1d22 !important;
+}
+form textarea:focus,
+form [contenteditable="true"]:focus,
+form [contentEditable="true"]:focus,
+div[class*="chat"] textarea:focus,
+div[class*="chat"] [contenteditable="true"]:focus,
+div[class*="chat"] [contentEditable="true"]:focus {
+  background: #22252b !important;
+  color: #e0e4e8 !important;
+}
+
+/* --- 9k. 内联编辑小输入框（节点重命名等） --- */
+input.nodrag[class*="w-16"],
+input.nodrag[class*="w-20"],
+input.nodrag[class*="w-24"] {
+  font-size: 10px !important;
+  padding: 4px 6px !important;
+  border-radius: 1px !important;
+}
+
+/* --- 9l. 设置面板大输入框 --- */
+div[class*="bg-black"] input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+div[class*="bg-zinc"] input:not([type="range"]):not([type="checkbox"]):not([type="radio"]) {
+  background: #1e2127 !important;
+  border-radius: 2px !important;
+}
+
+/* --- 9m. 节点内输入框保持暗色 --- */
+.nodrag.nowheel {
+  font-family: 'Courier New', monospace !important;
+}
+
+/* --- 9n. 标签文本铭牌化（各类 label 文本） --- */
+/* 目标：紧挨在输入框前面的说明文字 */
+div[class*="text-"][class*="text-xs"]:has(+ textarea),
+div[class*="text-"][class*="text-xs"]:has(+ input),
+div[class*="text-"][class*="text-xs"]:has(+ select),
+label:has(+ input),
+label:has(+ textarea),
+label:has(+ select) {
+  font-family: 'Courier New', monospace;
+  letter-spacing: 1.5px;
+  color: #777;
+  text-transform: uppercase;
+  font-size: 9px;
+}
+
+/* --- 9o. 节点内可编辑区域强制暗色背景 --- */
+/* 覆盖 bg-black/20 等透明类，确保节点内的 textarea/contentEditable/input 都有实色背景 */
+.react-flow__node textarea,
+.react-flow__node [contenteditable="true"],
+.react-flow__node [contentEditable="true"],
+.react-flow__node input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.node-wrapper textarea,
+.node-wrapper [contenteditable="true"],
+.node-wrapper [contentEditable="true"],
+.node-wrapper input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.nodrag.nowheel[contenteditable="true"],
+.nodrag.nowheel[contentEditable="true"],
+textarea.nodrag,
+[contenteditable="true"].nodrag,
+[contentEditable="true"].nodrag {
+  background: #1e2127 !important;
+  background-color: #1e2127 !important;
+  color: #c0c4c8 !important;
+}
+.react-flow__node textarea:focus,
+.react-flow__node [contenteditable="true"]:focus,
+.react-flow__node [contentEditable="true"]:focus,
+.react-flow__node input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+.node-wrapper textarea:focus,
+.node-wrapper [contenteditable="true"]:focus,
+.node-wrapper [contentEditable="true"]:focus,
+.nodrag.nowheel[contenteditable="true"]:focus,
+.nodrag.nowheel[contentEditable="true"]:focus,
+textarea.nodrag:focus,
+[contenteditable="true"].nodrag:focus,
+[contentEditable="true"].nodrag:focus {
+  background: #24272e !important;
+  background-color: #24272e !important;
+  color: #dce0e4 !important;
+}
+
+/* -------------------------------------------
+   10. 按钮 active 按压反馈
+   ------------------------------------------- */
+button:not([disabled]):active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease-out;
+}
+
+/* -------------------------------------------
+   11. 背景强制透明 — 让 starfield canvas 显示
+   ------------------------------------------- */
+html, body, #root {
+  background-color: #020308 !important;
+  background: #020308 !important;
+  --bg-base: #09090b !important;
+  --bg-panel: #18181b !important;
+  --bg-secondary: #18181b !important;
+  --text-primary: #f4f4f5 !important;
+  --text-secondary: #a1a1aa !important;
+  --text-muted: #71717a !important;
+  --border-color: #ffffff1a !important;
+}
+
+.react-flow,
+.react-flow__background,
+.react-flow__renderer,
+.react-flow__viewport,
+.react-flow__pane,
+.react-flow__node {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* 仅画布外层容器变透明 */
+div[class*="flex-1 relative overflow-hidden flex transition-colors"] {
+  background-color: transparent !important;
+}

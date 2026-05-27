@@ -1,0 +1,279 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Canvas Progress HUD — 叁视漫
+   LibTV-inspired floating progress cards overlaid on the canvas.
+   Glass-morphism panels, rounded-xl, subtle hairline borders.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --ph-bg: rgba(22, 22, 26, 0.94);
+  --ph-border: rgba(255, 255, 255, 0.07);
+  --ph-accent: #c89445;
+  --ph-teal: #05A3C5;
+  --ph-green: #3ddc97;
+  --ph-red: #e05555;
+  --ph-text-primary: #e4e4ec;
+  --ph-text-muted: #7a7a86;
+  --ph-text-disabled: #545460;
+}
+
+/* ── Container ───────────────────────────────────────────────────── */
+#progress-hud {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 9970;
+  width: 272px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+#progress-hud.has-tasks {
+  pointer-events: all;
+}
+
+/* ── Task card ───────────────────────────────────────────────────── */
+.ph-card {
+  background: var(--ph-bg);
+  border: 0.5px solid var(--ph-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0px 4px 10px 0px rgba(0, 0, 0, 0.18);
+  animation: ph-slide-in 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  overflow: hidden;
+  position: relative;
+}
+
+.ph-card.completing {
+  border-color: rgba(5, 163, 197, 0.25);
+}
+
+.ph-card.failing {
+  border-color: rgba(224, 85, 85, 0.25);
+}
+
+.ph-card.removing {
+  animation: ph-slide-out 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+@keyframes ph-slide-in {
+  from { opacity: 0; transform: translateX(24px) scale(0.96); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes ph-slide-out {
+  from { opacity: 1; transform: translateX(0) scale(1); max-height: 200px; }
+  to   { opacity: 0; transform: translateX(32px) scale(0.94); max-height: 0; margin: 0; padding: 0; }
+}
+
+/* ── Card header row ─────────────────────────────────────────────── */
+.ph-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.ph-model {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ph-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ph-model .ph-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ph-model .ph-dot.running {
+  background: var(--ph-accent);
+  box-shadow: 0 0 6px rgba(200, 148, 69, 0.55);
+  animation: ph-blink 1.2s ease-in-out infinite;
+}
+
+.ph-model .ph-dot.done {
+  background: var(--ph-teal);
+  box-shadow: 0 0 6px rgba(5, 163, 197, 0.45);
+}
+
+.ph-model .ph-dot.failed {
+  background: var(--ph-red);
+  box-shadow: 0 0 6px rgba(224, 85, 85, 0.45);
+}
+
+@keyframes ph-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.2; }
+}
+
+.ph-pct {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ph-accent);
+  font-variant-numeric: tabular-nums;
+  min-width: 36px;
+  text-align: right;
+  letter-spacing: -0.3px;
+}
+
+.ph-pct.done   { color: var(--ph-teal); }
+.ph-pct.failed { color: var(--ph-red); }
+
+/* ── Progress bar ────────────────────────────────────────────────── */
+.ph-bar-track {
+  height: 3px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+.ph-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #c89445, #d4a853);
+  transition: width 0.45s ease;
+  position: relative;
+}
+
+.ph-bar-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.18) 50%,
+    transparent 100%
+  );
+  animation: ph-shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes ph-shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.ph-bar-fill.done {
+  background: var(--ph-teal);
+}
+
+.ph-bar-fill.done::after {
+  display: none;
+}
+
+.ph-bar-fill.failed {
+  background: var(--ph-red);
+}
+
+.ph-bar-fill.failed::after {
+  display: none;
+}
+
+/* ── Result thumbnail ────────────────────────────────────────────── */
+.ph-result {
+  margin-top: 10px;
+  width: 100%;
+  height: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: height 0.3s ease;
+  position: relative;
+}
+
+.ph-result.show {
+  height: 124px;
+}
+
+.ph-result img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.ph-result .ph-result-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.ph-result .ph-result-overlay:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.ph-result .ph-result-hint {
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+.ph-result .ph-result-overlay:hover .ph-result-hint {
+  opacity: 1;
+}
+
+/* ── Error message ───────────────────────────────────────────────── */
+.ph-error {
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--ph-red);
+  line-height: 1.45;
+  opacity: 0.75;
+}
+
+/* ── Empty / collapsed ───────────────────────────────────────────── */
+#progress-hud:not(.has-tasks) .ph-card {
+  display: none;
+}
+
+/* ── Pin toggle ──────────────────────────────────────────────────── */
+#ph-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 9969;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
+  background: rgba(22, 22, 26, 0.9);
+  color: var(--ph-text-muted);
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  transition: all 0.2s;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+#ph-toggle:hover {
+  border-color: var(--ph-accent);
+  color: var(--ph-accent);
+}
+
+#progress-hud.has-tasks ~ #ph-toggle {
+  display: flex;
+}
+
+#ph-toggle.pinned {
+  color: var(--ph-accent);
+  border-color: var(--ph-accent);
+  background: rgba(200, 148, 69, 0.08);
+}
