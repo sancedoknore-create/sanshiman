@@ -2989,7 +2989,7 @@ electron.app.whenReady().then(() => {
         type: "info",
         title: "更新下载完成",
         message: "更新已下载完毕",
-        detail: "点击"立即重启"安装更新并重启应用。",
+        detail: "点击 [立即重启] 安装更新并重启应用。",
         buttons: ["稍后重启", "立即重启"],
         defaultId: 1,
         cancelId: 0
