@@ -1,6 +1,6 @@
 {
   "name": "sanshiman",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "叁视漫 客户端",
   "main": "./out/main/index.js",
   "author": "example.com",
@@ -9,7 +9,7 @@
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "@xyflow/react": "^12.10.1",
-    "better-sqlite3": "^12.6.2",
+    "better-sqlite3": "^12.10.0",
     "dompurify": "^3.4.2",
     "electron-updater": "^6.8.3",
     "iconv-lite": "^0.7.2",
