@@ -2595,6 +2595,15 @@ function setupIpcHandlers() {
   electron.ipcMain.handle("app:install-update", () => {
     autoUpdater.quitAndInstall();
   });
+  electron.ipcMain.handle("app:download-update", async () => {
+    if (!electron.app.isPackaged) return { ok: false, error: "开发模式不支持" };
+    try {
+      await autoUpdater.downloadUpdate();
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  });
   // 窗口控制
   electron.ipcMain.handle("window:minimize", (event) => {
     electron.BrowserWindow.fromWebContents(event.sender)?.minimize();
@@ -2949,27 +2958,49 @@ electron.app.whenReady().then(() => {
   createWindow();
   // ── 自动更新 (electron-updater) ──────────────────────────────
   if (electron.app.isPackaged) {
-    autoUpdater.autoDownload = true;
-    autoUpdater.autoInstallOnAppQuit = true;
+    autoUpdater.autoDownload = false;
     autoUpdater.on("update-available", (info) => {
       const win = electron.BrowserWindow.getAllWindows()[0];
-      if (win) win.webContents.send("update:available", info);
-    });
-    autoUpdater.on("update-not-available", (info) => {
-      const win = electron.BrowserWindow.getAllWindows()[0];
-      if (win) win.webContents.send("update:not-available", info);
+      if (!win) return;
+      electron.dialog.showMessageBox(win, {
+        type: "info",
+        title: "发现新版本",
+        message: `发现新版本 v${info.version}`,
+        detail: "是否立即下载更新？下载过程在后台进行，不影响使用。",
+        buttons: ["稍后再说", "立即下载"],
+        defaultId: 1,
+        cancelId: 0
+      }).then(({ response }) => {
+        if (response === 1) {
+          autoUpdater.downloadUpdate().catch((err) => {
+            electron.dialog.showErrorBox("更新下载失败", err.message);
+          });
+        }
+      });
     });
     autoUpdater.on("download-progress", (progress) => {
       const win = electron.BrowserWindow.getAllWindows()[0];
       if (win) win.webContents.send("update:download-progress", progress);
     });
-    autoUpdater.on("update-downloaded", (info) => {
+    autoUpdater.on("update-downloaded", () => {
       const win = electron.BrowserWindow.getAllWindows()[0];
-      if (win) win.webContents.send("update:downloaded", info);
+      if (!win) return;
+      electron.dialog.showMessageBox(win, {
+        type: "info",
+        title: "更新下载完成",
+        message: "更新已下载完毕",
+        detail: "点击"立即重启"安装更新并重启应用。",
+        buttons: ["稍后重启", "立即重启"],
+        defaultId: 1,
+        cancelId: 0
+      }).then(({ response }) => {
+        if (response === 1) {
+          autoUpdater.quitAndInstall();
+        }
+      });
     });
     autoUpdater.on("error", (err) => {
-      const win = electron.BrowserWindow.getAllWindows()[0];
-      if (win) win.webContents.send("update:error", { message: err.message });
+      console.error("[autoUpdater]", err.message);
     });
     setTimeout(() => {
       autoUpdater.checkForUpdates().catch(() => {});
