@@ -2,11 +2,13 @@
   var canvas, ctx, W, H;
   var stars = [], dusts = [], comets = [];
   var startTime = Date.now();
+  var animId = null;
+
+  // ── 星空引擎 ────────────────────────────────────────────────
 
   function initStars() {
     stars = [];
     dusts = [];
-
     for (var i = 0; i < 25; i++) {
       stars.push({
         x: Math.random() * W, y: Math.random() * H,
@@ -15,7 +17,7 @@
         speed: Math.random() * 2.5 + 1.0,
         offset: Math.random() * Math.PI * 2,
         hue: Math.random() < 0.3 ? 30 + Math.random() * 40 : 200 + Math.random() * 40,
-        glowR: Math.random() * 6 + 4
+        glowR: Math.random() * 8 + 3
       });
     }
     for (var i = 0; i < 120; i++) {
@@ -26,7 +28,7 @@
         speed: Math.random() * 2.0 + 0.8,
         offset: Math.random() * Math.PI * 2,
         hue: 190 + Math.random() * 60,
-        glowR: Math.random() * 3 + 2
+        glowR: Math.random() * 4 + 1
       });
     }
     for (var i = 0; i < 400; i++) {
@@ -69,13 +71,13 @@
     });
   }
 
-  function resize() {
+  function resizeStarfield() {
     W = canvas.width = window.innerWidth;
     H = canvas.height = window.innerHeight;
     initStars();
   }
 
-  function draw() {
+  function drawStarfield() {
     if (!ctx) return;
     ctx.clearRect(0, 0, W, H);
     var t = (Date.now() - startTime) * 0.001;
@@ -83,10 +85,8 @@
     for (var i = 0; i < dusts.length; i++) {
       var d = dusts[i];
       d.x += d.vx; d.y += d.vy;
-      if (d.x < -10) d.x = W + 10;
-      if (d.x > W + 10) d.x = -10;
-      if (d.y < -10) d.y = H + 10;
-      if (d.y > H + 10) d.y = -10;
+      if (d.x < -10) d.x = W + 10; if (d.x > W + 10) d.x = -10;
+      if (d.y < -10) d.y = H + 10; if (d.y > H + 10) d.y = -10;
       ctx.beginPath();
       ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
       ctx.fillStyle = 'hsla(' + d.hue + ', 50%, 70%, ' + d.alpha + ')';
@@ -98,19 +98,14 @@
       var wave = Math.sin(t * s.speed + s.offset);
       var alpha = s.baseAlpha + wave * 0.3;
       alpha = Math.max(0.03, Math.min(1, alpha));
-
       if (s.glowR > 0 && alpha > 0.15) {
         var glow = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.glowR);
         glow.addColorStop(0, 'hsla(' + s.hue + ', 60%, 80%, ' + (alpha * 0.5) + ')');
         glow.addColorStop(1, 'transparent');
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.glowR, 0, Math.PI * 2);
-        ctx.fillStyle = glow;
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.glowR, 0, Math.PI * 2);
+        ctx.fillStyle = glow; ctx.fill();
       }
-
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
       ctx.fillStyle = 'hsla(' + s.hue + ', 50%, 80%, ' + alpha + ')';
       ctx.fill();
     }
@@ -123,103 +118,65 @@
       grad.addColorStop(0, 'rgba(255,255,255,' + (c.life * 0.95) + ')');
       grad.addColorStop(0.08, 'rgba(180,210,255,' + (c.life * 0.5) + ')');
       grad.addColorStop(1, 'transparent');
-      ctx.beginPath();
-      ctx.moveTo(c.x, c.y);
-      ctx.lineTo(tailX, tailY);
-      ctx.strokeStyle = grad;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(c.x, c.y, 2, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255,255,255,' + c.life + ')';
-      ctx.fill();
-      c.x += c.vx; c.y += c.vy;
-      c.life -= c.decay;
+      ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(tailX, tailY);
+      ctx.strokeStyle = grad; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(c.x, c.y, 2, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,' + c.life + ')'; ctx.fill();
+      c.x += c.vx; c.y += c.vy; c.life -= c.decay;
       if (c.life <= 0) comets.splice(i, 1);
     }
   }
 
-  function loop() {
-    draw();
-    requestAnimationFrame(loop);
+  function starfieldLoop() {
+    drawStarfield();
+    animId = requestAnimationFrame(starfieldLoop);
   }
 
+  var cometTimer;
   function scheduleComet() {
-    setTimeout(function() {
+    cometTimer = setTimeout(function() {
       if (comets.length < 3) spawnComet();
       scheduleComet();
     }, 3000 + Math.random() * 8000);
   }
 
-  // === CSSOM 规则注入（React 无法触及） ===
-  function injectForceRules(sheet) {
-    if (!sheet) return;
-    try {
-      // 强制 textarea / input / select / contentEditable
-      sheet.insertRule('textarea, input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, [contenteditable="true"], [contentEditable="true"] { background-color: #1e2127 !important; background: #1e2127 !important; color: #c0c4c8 !important; }', sheet.cssRules.length);
-      sheet.insertRule('textarea:focus, input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus, select:focus, [contenteditable="true"]:focus, [contentEditable="true"]:focus { background-color: #24272e !important; background: #24272e !important; }', sheet.cssRules.length);
-      // 覆盖 nodrag 可编辑区域
-      sheet.insertRule('.nodrag.nowheel { background-color: #1e2127 !important; background: #1e2127 !important; color: #c0c4c8 !important; }', sheet.cssRules.length);
-      return true;
-    } catch(e) {
-      return false;
-    }
-  }
-
-  function start() {
+  function startStarfield() {
     canvas = document.createElement('canvas');
     canvas.id = 'starfield-bg';
     canvas.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2;pointer-events:none;display:block;';
     document.body.insertBefore(canvas, document.body.firstChild);
-
     ctx = canvas.getContext('2d');
-    resize();
-    loop();
+    resizeStarfield();
+    starfieldLoop();
     scheduleComet();
-    window.addEventListener('resize', resize);
+  }
 
-    // === 样式注入：创建 2 个 style 元素放入 head ===
-    // Style 1: 主题变量 + ReactFlow 透明
-    var s1 = document.createElement('style');
-    s1.id = 'sf-theme';
-    s1.textContent = ':root,.theme-light,.theme-dark,html,body,#root{background:#020308!important;background-color:#020308!important;--bg-base:#09090b!important;--bg-panel:#18181b!important;--bg-secondary:#18181b!important;--text-primary:#f4f4f5!important;--text-secondary:#a1a1aa!important;--text-muted:#71717a!important;--border-color:#ffffff1a!important}.react-flow,.react-flow__background,.react-flow__renderer,.react-flow__viewport,.react-flow__pane{background:transparent!important;background-color:transparent!important}.react-flow{--xy-background-color:transparent!important;--xy-background-color-default:transparent!important}';
-    document.head.appendChild(s1);
+  // ── CSS 主题注入 ────────────────────────────────────────────
 
-    // Style 2: 输入框强制样式 - 用 CSSOM insertRule
-    var s2 = document.createElement('style');
-    s2.id = 'sf-inputs';
-    document.head.appendChild(s2);
-    var sheet = s2.sheet || s2.styleSheet;
-    if (sheet) {
-      injectForceRules(sheet);
-      // 如果 insertRule 失败（CSSOM 可能还不可用），稍后重试
-      if (sheet.cssRules.length === 0) {
-        setTimeout(function() { injectForceRules(s2.sheet || s2.styleSheet); }, 500);
-        setTimeout(function() { injectForceRules(s2.sheet || s2.styleSheet); }, 2000);
-      }
+  function injectCSS() {
+    var s1 = document.getElementById('sf-theme');
+    if (!s1) {
+      s1 = document.createElement('style');
+      s1.id = 'sf-theme';
+      s1.textContent = ':root,.theme-light,.theme-dark,html,body,#root{background:#020308!important;background-color:#020308!important;--bg-base:#09090b!important;--bg-panel:#18181b!important;--bg-secondary:#18181b!important;--text-primary:#f4f4f5!important;--text-secondary:#a1a1aa!important;--text-muted:#71717a!important;--border-color:#ffffff1a!important}.react-flow,.react-flow__background,.react-flow__renderer,.react-flow__viewport,.react-flow__pane{background:transparent!important;background-color:transparent!important}.react-flow{--xy-background-color:transparent!important;--xy-background-color-default:transparent!important}';
+      document.head.appendChild(s1);
     }
-
-    // === 兜底：JS 直接设置 inline style !important（应对 React 覆盖） ===
-    function forceAll() {
-      var els = document.querySelectorAll('textarea, input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, [contenteditable="true"], [contentEditable="true"]');
-      for (var i = 0; i < els.length; i++) {
-        var el = els[i];
-        // setProperty with 'important' gives highest CSS priority — beats stylesheets
-        el.style.setProperty('background-color', '#1e2127', 'important');
-        el.style.setProperty('background', '#1e2127', 'important');
-        el.style.setProperty('color', '#c0c4c8', 'important');
-      }
+    var s2 = document.getElementById('sf-inputs');
+    if (!s2) {
+      s2 = document.createElement('style');
+      s2.id = 'sf-inputs';
+      s2.textContent = 'textarea,input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),select,[contenteditable="true"],[contentEditable="true"]{background-color:#1e2127!important;background:#1e2127!important;color:#c0c4c8!important}textarea:focus,input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,select:focus,[contenteditable="true"]:focus,[contentEditable="true"]:focus{background-color:#24272e!important;background:#24272e!important}.nodrag.nowheel{background-color:#1e2127!important;background:#1e2127!important;color:#c0c4c8!important}';
+      document.head.appendChild(s2);
     }
+  }
 
-    // 立即执行 + 每 500ms 重扫（React re-render 会重置 inline style）
-    forceAll();
-    setInterval(forceAll, 500);
+  function start() {
+    injectCSS();
+    startStarfield();
 
-    // MutationObserver: React 创建新元素时，等它渲染完再 force
-    var mo = new MutationObserver(function() {
-      setTimeout(forceAll, 50);
+    window.addEventListener('resize', function() {
+      resizeStarfield();
     });
-    mo.observe(document.body, { childList: true, subtree: true });
   }
 
   if (document.readyState === 'loading') {
