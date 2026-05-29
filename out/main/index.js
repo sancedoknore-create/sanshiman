@@ -1404,6 +1404,26 @@ class TaskExecutor {
         const _isVolcanoArk = rootUrl.includes("ark.cn-beijing.volces.com") || _isAiiD;
         const _isSeedanceRelay = rootUrl.includes("sd2.mengfactory.cn") || rootUrl.includes("api.wantongapi.com");
         const _isVolctokens = rootUrl.includes("volctokens.api.mengfactory.cn");
+        const _isCoolApi = rootUrl.includes("api.mjapi.cc.cd");
+        if (_isCoolApi) {
+          return await this._submitCoolApiTask({
+            rootUrl,
+            headers,
+            cleanApiKey,
+            targetModel,
+            modelId,
+            prompt,
+            duration,
+            ratio,
+            sizeStr,
+            resolution,
+            sourceImages,
+            sourceVideos,
+            sourceAudios,
+            updateCallback,
+            signal
+          });
+        }
         let submitEndpoint = _isVolcanoArk ? `${rootUrl}/contents/generations/tasks` : `${rootUrl}/v1/videos/generations`;
         let reqBody = {};
         if (_isSeedanceRelay) {
@@ -1795,6 +1815,219 @@ class TaskExecutor {
     } catch (err) {
       throw new Error(err.message);
     }
+  }
+  // ── Cool API (api.mjapi.cc.cd) ─────────────────────────────────────────
+  static async _uploadFileToCoolApi(filePath, rootUrl, apiKey) {
+    try {
+      const buffer = await fs.promises.readFile(filePath);
+      const ext = path.extname(filePath).toLowerCase().replace(/^\./, "") || "png";
+      const mimeMap = {
+        jpg: "image/jpeg",
+        jpeg: "image/jpeg",
+        png: "image/png",
+        webp: "image/webp",
+        gif: "image/gif",
+        bmp: "image/bmp",
+        mp4: "video/mp4",
+        webm: "video/webm",
+        mov: "video/quicktime",
+        mp3: "audio/mpeg",
+        wav: "audio/wav",
+        ogg: "audio/ogg",
+        m4a: "audio/mp4"
+      };
+      const mime = mimeMap[ext] || "application/octet-stream";
+      const fd = new FormData();
+      fd.append("file", new Blob([buffer], { type: mime }), path.basename(filePath));
+      const res = await fetch(`${rootUrl}/v1/cool/upload`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}` },
+        body: fd
+      });
+      if (!res.ok) {
+        console.error(`[TaskExecutor] Cool upload HTTP ${res.status}`);
+        return null;
+      }
+      const data = await res.json();
+      return data?.file_url || null;
+    } catch (e) {
+      console.error("[TaskExecutor] Cool upload failed:", e && e.message);
+      return null;
+    }
+  }
+  static async _submitCoolApiTask({ rootUrl, headers, cleanApiKey, targetModel, modelId, prompt, duration, ratio, sizeStr, resolution, sourceImages, sourceVideos, sourceAudios, updateCallback, signal }) {
+    const _coolModel = targetModel || modelId || "seedance_2";
+    const _coolDurationRaw = duration ? parseInt(String(duration).replace("s", ""), 10) : 5;
+    let _coolDuration = Math.max(1, Math.min(15, _coolDurationRaw));
+    if (_coolModel === "r_sd2" && _coolDuration <= 10) {
+      _coolDuration = 11;
+    }
+    const _resMapCool = { "720P": "720p", "480P": "480p", "1080P": "1080p" };
+    let _coolResolution = _resMapCool[resolution] || (resolution ? String(resolution).toLowerCase() : void 0);
+    if (!["480p", "720p", "1080p"].includes(_coolResolution)) {
+      _coolResolution = "720p";
+    }
+    if (_coolModel === "r_sd2" && _coolResolution !== "480p" && _coolResolution !== "720p") {
+      _coolResolution = "720p";
+    }
+    const _coolValidRatios = ["16:9", "9:16", "1:1", "4:3", "3:4", "3:2", "2:3", "2:1"];
+    const _coolRawRatio = ratio || sizeStr || "16:9";
+    let _coolRatio = _coolRawRatio === "Auto" || _coolRawRatio === "AUTO" || _coolRawRatio === "adaptive" ? "16:9" : _coolRawRatio;
+    if (!_coolValidRatios.includes(_coolRatio)) _coolRatio = "16:9";
+    const _coolFiles = [];
+    const _resolveSrc = async (src, fallbackType) => {
+      if (!src) return null;
+      if (src.startsWith("http://") || src.startsWith("https://")) {
+        return { url: src, type: fallbackType };
+      }
+      if (src.startsWith("data:")) {
+        return null;
+      }
+      const absPath = typeof TaskExecutor.resolveLocalPath === "function" ? TaskExecutor.resolveLocalPath(src) : src;
+      if (absPath) {
+        const uploaded = await TaskExecutor._uploadFileToCoolApi(absPath, rootUrl, cleanApiKey);
+        if (uploaded) return { url: uploaded, type: fallbackType };
+      }
+      return null;
+    };
+    if (sourceImages && sourceImages.length > 0) {
+      for (const img of sourceImages) {
+        const f = await _resolveSrc(img, "image");
+        if (f) _coolFiles.push(f);
+      }
+    }
+    if (sourceVideos && sourceVideos.length > 0) {
+      for (const v of sourceVideos) {
+        const f = await _resolveSrc(v, "video");
+        if (f) _coolFiles.push(f);
+      }
+    }
+    if (sourceAudios && sourceAudios.length > 0) {
+      for (const a of sourceAudios) {
+        const f = await _resolveSrc(a, "audio");
+        if (f) _coolFiles.push(f);
+      }
+    }
+    const reqBody = {
+      prompt: prompt || "",
+      model: _coolModel,
+      ratio: _coolRatio,
+      duration: _coolDuration
+    };
+    if (_coolResolution) reqBody.resolution = _coolResolution;
+    if (_coolFiles.length > 0) reqBody.files = _coolFiles;
+    const submitEndpoint = `${rootUrl}/v1/cool/generate`;
+    TaskExecutor.debugLog(`[TaskExecutor] Cool API submit:`, JSON.stringify({
+      endpoint: submitEndpoint,
+      model: reqBody.model,
+      ratio: reqBody.ratio,
+      duration: reqBody.duration,
+      resolution: reqBody.resolution,
+      files: _coolFiles.length
+    }));
+    const submitRes = await fetch(submitEndpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(reqBody),
+      signal
+    });
+    const submitText = await submitRes.text();
+    let submitData;
+    try {
+      submitData = submitText ? JSON.parse(submitText) : {};
+    } catch {
+      throw new Error(`Cool API 返回非 JSON 响应 (HTTP ${submitRes.status}): ${submitText.slice(0, 300)}`);
+    }
+    if (!submitRes.ok) {
+      const _err = submitData?.error?.message || submitData?.message || submitData?.detail || `HTTP ${submitRes.status}`;
+      throw new Error(`Cool API 提交失败: ${_err}`);
+    }
+    const taskId = submitData?.task_id;
+    if (!taskId) throw new Error("Cool API 提交成功但未返回 task_id");
+    updateCallback(30, `Cool API 任务已提交 (ID: ${taskId})`);
+    return await TaskExecutor.pollCoolApiTask(rootUrl, headers, taskId, updateCallback, signal);
+  }
+  static async pollCoolApiTask(rootUrl, headers, taskId, updateCallback, signal) {
+    return new Promise((resolve, reject) => {
+      if (signal?.aborted) {
+        return reject(new Error("Task Cancelled locally"));
+      }
+      let attempts = 0;
+      const maxAttempts = TaskExecutor.MAX_VIDEO_POLL_ATTEMPTS;
+      let errorCount = 0;
+      let progress = 30;
+      const pollEndpoint = `${rootUrl}/v1/cool/task/${taskId}`;
+      const COOL_FAIL_STATUSES = ["FAILED", "ERROR", "CANCELLED", "CANCELED", "EXPIRED", "TIMEOUT", "TIMED_OUT", "REJECTED", "INVALID", "BLOCKED", "FORBIDDEN", "ABORTED", "INTERNAL_ERROR", "INSUFFICIENT_QUOTA", "RATE_LIMITED"];
+      const timer = setInterval(async () => {
+        try {
+          attempts++;
+          if (attempts > maxAttempts) {
+            clearInterval(timer);
+            return reject(new Error("Cool API 视频轮询超时"));
+          }
+          const res = await TaskExecutor.fetchWithTimeout(pollEndpoint, { method: "GET", headers, signal }, 3e4);
+          if (!res.ok) {
+            errorCount++;
+            console.error(`[TaskExecutor] [Cool Poll ${attempts}] HTTP ${res.status}, 连续错误: ${errorCount}`);
+            if (errorCount >= 5) {
+              clearInterval(timer);
+              return reject(new Error(`Cool API 轮询接口异常 (HTTP ${res.status})，已停止`));
+            }
+            return;
+          }
+          let data;
+          try {
+            data = await res.json();
+          } catch {
+            errorCount++;
+            if (errorCount >= 5) {
+              clearInterval(timer);
+              return reject(new Error("Cool API 轮询返回非 JSON，已停止"));
+            }
+            return;
+          }
+          errorCount = 0;
+          const status = String(data?.status || "").toUpperCase();
+          TaskExecutor.debugLog(`[TaskExecutor] [Cool Poll ${attempts}]`, status);
+          const independentErr = data?.error || data?.error_message || data?.fail_reason;
+          if (independentErr && status !== "SUCCESS") {
+            clearInterval(timer);
+            return reject(new Error(typeof independentErr === "string" ? independentErr : independentErr.message || "Cool API 报错"));
+          }
+          if (status === "SUCCESS") {
+            clearInterval(timer);
+            const finalUrl = data?.result?.url;
+            if (finalUrl) {
+              updateCallback(100, "视频生成完毕");
+              resolve({ success: true, resultUrl: finalUrl });
+            } else {
+              reject(new Error("Cool API 任务完成但未返回视频链接"));
+            }
+          } else if (COOL_FAIL_STATUSES.includes(status)) {
+            clearInterval(timer);
+            reject(new Error(typeof data?.error === "string" ? data.error : data?.error?.message || data?.message || `Cool API 任务${status.toLowerCase()}`));
+          } else {
+            progress = Math.min(95, progress + 1);
+            const hint = status === "PENDING" ? "Cool API 排队中..." : "Cool API 生成中...";
+            updateCallback(progress, hint);
+          }
+        } catch (err) {
+          if (err.name === "AbortError") {
+            clearInterval(timer);
+            return reject(new Error("Task Cancelled locally"));
+          }
+          console.error("[Engine] Cool Poll Network Error:", err);
+          errorCount++;
+          if (errorCount >= 5) {
+            clearInterval(timer);
+            reject(new Error("Cool API 轮询连续网络错误，已停止: " + err.message));
+          }
+        }
+      }, 5e3);
+      if (signal) {
+        signal.addEventListener("abort", () => clearInterval(timer), { once: true });
+      }
+    });
   }
   static async pollVideoTask(rootUrl, headers, jobId, targetModel, updateCallback, signal) {
     return new Promise((resolve, reject) => {
