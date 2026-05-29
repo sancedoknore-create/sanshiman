@@ -2801,12 +2801,40 @@ function setupIpcHandlers() {
     return r;
   });
   const defaultSavePath = path.join(electron.app.getPath("userData"), "LocalCache");
+  const _saveConfigPath = path.join(electron.app.getPath("userData"), "save-config.json");
+  let _diskSavedConfig = {};
+  try {
+    if (fs.existsSync(_saveConfigPath)) {
+      _diskSavedConfig = JSON.parse(fs.readFileSync(_saveConfigPath, "utf-8")) || {};
+    }
+  } catch (e) {
+    console.error(`[savePath] read save-config.json failed:`, e && e.message);
+  }
+  const _savedImagePath = _diskSavedConfig.image_save_path || getSetting("image_save_path");
+  const _savedVideoPath = _diskSavedConfig.video_save_path || getSetting("video_save_path");
+  const _savedConvertPng = _diskSavedConfig.convert_png_to_jpg ?? getSetting("convert_png_to_jpg");
+  const _savedJpgQuality = _diskSavedConfig.jpg_quality ?? getSetting("jpg_quality");
+  console.log(`[savePath] startup: disk-image="${_diskSavedConfig.image_save_path}" disk-video="${_diskSavedConfig.video_save_path}" db-image="${getSetting("image_save_path")}"`);
   currentConfig = {
-    image_save_path: path.join(defaultSavePath, "images"),
-    video_save_path: path.join(defaultSavePath, "videos"),
-    convert_png_to_jpg: true,
-    jpg_quality: 95
+    image_save_path: _savedImagePath || path.join(defaultSavePath, "images"),
+    video_save_path: _savedVideoPath || path.join(defaultSavePath, "videos"),
+    convert_png_to_jpg: _savedConvertPng === null || _savedConvertPng === void 0 ? true : _savedConvertPng === "true" || _savedConvertPng === true || _savedConvertPng === "1",
+    jpg_quality: _savedJpgQuality ? parseInt(String(_savedJpgQuality), 10) || 95 : 95
   };
+  console.log(`[savePath] currentConfig now: image="${currentConfig.image_save_path}" video="${currentConfig.video_save_path}"`);
+  function _persistSaveConfig() {
+    try {
+      fs.writeFileSync(_saveConfigPath, JSON.stringify({
+        image_save_path: currentConfig.image_save_path,
+        video_save_path: currentConfig.video_save_path,
+        convert_png_to_jpg: currentConfig.convert_png_to_jpg,
+        jpg_quality: currentConfig.jpg_quality
+      }, null, 2), "utf-8");
+      console.log(`[savePath] persisted to ${_saveConfigPath}`);
+    } catch (e) {
+      console.error(`[savePath] write save-config.json failed:`, e && e.message);
+    }
+  }
   const ensureDirs = () => {
     if (!fs.existsSync(currentConfig.image_save_path)) {
       fs.mkdirSync(currentConfig.image_save_path, { recursive: true });
@@ -2852,21 +2880,35 @@ function setupIpcHandlers() {
   });
   electron.ipcMain.handle("cache:config", (event, newConfig) => {
     try {
+      console.log(`[savePath] cache:config received:`, JSON.stringify(newConfig));
+      let changed = false;
       if (newConfig.imageSavePath) {
         currentConfig.image_save_path = newConfig.imageSavePath;
         sanshimanAllowedRoots.add(path.resolve(newConfig.imageSavePath));
+        setSetting("image_save_path", newConfig.imageSavePath);
+        changed = true;
       }
       if (newConfig.videoSavePath) {
         currentConfig.video_save_path = newConfig.videoSavePath;
         sanshimanAllowedRoots.add(path.resolve(newConfig.videoSavePath));
+        setSetting("video_save_path", newConfig.videoSavePath);
+        changed = true;
       }
       if (typeof newConfig.convertPngToJpg === "boolean") {
         currentConfig.convert_png_to_jpg = newConfig.convertPngToJpg;
+        setSetting("convert_png_to_jpg", newConfig.convertPngToJpg ? "true" : "false");
+        changed = true;
       }
-      if (newConfig.jpgQuality) currentConfig.jpg_quality = newConfig.jpgQuality;
+      if (newConfig.jpgQuality) {
+        currentConfig.jpg_quality = newConfig.jpgQuality;
+        setSetting("jpg_quality", String(newConfig.jpgQuality));
+        changed = true;
+      }
       ensureDirs();
+      if (changed) _persistSaveConfig();
       return { success: true, config: currentConfig };
     } catch (e) {
+      console.error(`[savePath] cache:config error:`, e);
       return { success: false, error: e.message };
     }
   });
