@@ -50,10 +50,35 @@
       .react-flow__background,
       .react-flow__renderer,
       .react-flow__viewport,
-      .react-flow__pane,
-      .react-flow__node {
+      .react-flow__pane {
         background: transparent !important;
         background-color: transparent !important;
+      }
+      /* 节点本体实色 + 边框 + 阴影，让节点在深色画布上清晰可见 */
+      .react-flow__node {
+        background-color: #1f2640 !important;
+        background: #1f2640 !important;
+        border-radius: 12px;
+        border: 1px solid rgba(140, 180, 230, 0.18) !important;
+        box-shadow: 0 6px 28px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.4);
+        /* 局部覆盖 CSS 变量，让节点内 inline style 用的 var(--bg-secondary)/var(--bg-panel) 都解析成节点专属实色 */
+        --bg-panel: #1f2640 !important;
+        --bg-secondary: #1f2640 !important;
+        --bg-base: #1f2640 !important;
+      }
+      /* 内层根节点统一实色，覆盖 var(--bg-panel) / Tailwind 半透明 */
+      .react-flow__node > div,
+      .react-flow__node > div > div,
+      .node-wrapper {
+        background-color: #1f2640 !important;
+        background: #1f2640 !important;
+      }
+      /* 关闭节点内的背景虚化 — 在实色底上没意义，反而加重"糊"感 */
+      .react-flow__node,
+      .react-flow__node *[style*="backdrop"],
+      .react-flow__node *[style*="filter"] {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
       }
       .react-flow {
         --xy-background-color: transparent !important;
@@ -67,9 +92,7 @@
       select,
       [contenteditable="true"],
       [contentEditable="true"],
-      .nodrag.nowheel,
-      .node-wrapper,
-      .react-flow__node > div {
+      .nodrag.nowheel {
         background-color: #1e2127 !important;
         background: #1e2127 !important;
         color: #c0c4c8 !important;
