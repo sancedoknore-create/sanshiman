@@ -1,6 +1,10 @@
 "use strict";
 const electron = require("electron");
-const preload = require("@electron-toolkit/preload");
+const INVOKE_PUBLIC_CHANNELS = [
+  "cache:config",
+  "cache:download-url",
+  "cache:save-cache"
+];
 const ALLOWED_CHANNELS = [
   "cache:ping",
   "cache:config",
@@ -49,7 +53,6 @@ const ALLOWED_CHANNELS = [
   "updater-quit-install",
   "monitor:get-stats",
   "thumbnail:generate",
-  "protocol:set-allowed-roots",
   "fs:validate-project-dir",
   "logger:get-dir",
   "logger:open-dir",
@@ -74,27 +77,43 @@ function safeInvoke(channel, data) {
   }
   return electron.ipcRenderer.invoke(channel, data);
 }
-const ALLOWED_ON_CHANNELS = ["engine:task-update", "updater-message", "app-before-close", "logger:append"];
+function safeInvokePublic(channel, data) {
+  if (!INVOKE_PUBLIC_CHANNELS.includes(channel)) {
+    return Promise.reject(new Error(`IPC channel not allowed for generic invoke: ${channel}`));
+  }
+  return electron.ipcRenderer.invoke(channel, data);
+}
+const ALLOWED_ON_CHANNELS = ["engine:task-update", "updater-message", "app-before-close"];
 function safeOn(channel, callback) {
   if (!ALLOWED_ON_CHANNELS.includes(channel)) {
     console.error(`IPC on channel not allowed: ${channel}`);
     return () => {
     };
   }
-  const handler = (event, args) => callback(args);
+  const handler = (_event, ...args) => {
+    try {
+      callback(...args);
+    } catch (err) {
+      try {
+        const msg = err && err.message ? err.message : String(err);
+        const stack = err && err.stack ? String(err.stack).slice(0, 1e3) : "";
+        electron.ipcRenderer.send("logger:append", "error", [`[safeOn:${channel}] handler threw: ${msg}`, stack]);
+      } catch {
+      }
+      console.error(`[safeOn:${channel}] handler threw:`, err);
+    }
+  };
   electron.ipcRenderer.on(channel, handler);
   return () => electron.ipcRenderer.removeListener(channel, handler);
 }
 function createDbAPI() {
   return {
-    // 项目
     projects: {
       list: () => safeInvoke("db:projects:list"),
       get: (id) => safeInvoke("db:projects:get", id),
       save: (project) => safeInvoke("db:projects:save", project),
       delete: (id) => safeInvoke("db:projects:delete", id)
     },
-    // 节点
     nodes: {
       list: (projectId) => safeInvoke("db:nodes:list", projectId),
       save: (node, projectId) => safeInvoke("db:nodes:save", { node, projectId }),
@@ -102,7 +121,6 @@ function createDbAPI() {
       delete: (id) => safeInvoke("db:nodes:delete", id),
       deleteByProject: (projectId) => safeInvoke("db:nodes:deleteByProject", projectId)
     },
-    // 连接
     connections: {
       list: (projectId) => safeInvoke("db:connections:list", projectId),
       save: (connection, projectId) => safeInvoke("db:connections:save", { connection, projectId }),
@@ -110,7 +128,6 @@ function createDbAPI() {
       delete: (id) => safeInvoke("db:connections:delete", id),
       deleteByProject: (projectId) => safeInvoke("db:connections:deleteByProject", projectId)
     },
-    // 历史
     history: {
       list: (projectId, limit) => safeInvoke("db:history:list", { projectId, limit }),
       listAll: (limit) => safeInvoke("db:history:listAll", limit),
@@ -118,7 +135,6 @@ function createDbAPI() {
       saveBatch: (items, projectId) => safeInvoke("db:history:saveBatch", { items, projectId }),
       delete: (id) => safeInvoke("db:history:delete", id)
     },
-    // 设置 KV
     settings: {
       get: (key) => safeInvoke("db:settings:get", key),
       set: (key, value) => safeInvoke("db:settings:set", { key, value }),
@@ -128,16 +144,10 @@ function createDbAPI() {
     }
   };
 }
-function safeSend(channel, ...args) {
-  if (!ALLOWED_CHANNELS.includes(channel)) {
-    return;
-  }
-  return electron.ipcRenderer.send(channel, ...args);
-}
 const api = {
-  invoke: (channel, data) => safeInvoke(channel, data),
-  send: (channel, ...args) => safeSend(channel, ...args),
-  on: (channel, callback) => safeOn(channel, callback),
+  // 通用 invoke：只允许 INVOKE_PUBLIC_CHANNELS 中的 3 个 channel；
+  // 其它 channel 必须走下方分组 API。
+  invoke: (channel, data) => safeInvokePublic(channel, data),
   localCacheAPI: {
     ping: () => safeInvoke("cache:ping"),
     config: (newConfig) => safeInvoke("cache:config", newConfig),
@@ -202,14 +212,12 @@ const api = {
 };
 if (process.contextIsolated) {
   try {
-    electron.contextBridge.exposeInMainWorld("electron", preload.electronAPI);
     electron.contextBridge.exposeInMainWorld("api", api);
     electron.contextBridge.exposeInMainWorld("dbAPI", createDbAPI());
   } catch (error) {
     console.error(error);
   }
 } else {
-  window.electron = preload.electronAPI;
   window.api = api;
   window.dbAPI = createDbAPI();
 }

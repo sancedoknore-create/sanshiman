@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data:; script-src 'self'; connect-src 'self' https:; img-src 'self' data: https: blob:; style-src 'self' 'unsafe-inline';" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data:; script-src 'self' 'unsafe-inline'; connect-src 'self' https:; img-src 'self' data: https: blob:; style-src 'self' 'unsafe-inline';" />
 <title>Seedance 虚拟人像素材库</title>
 <style>
   :root{
@@ -81,7 +81,7 @@
         <legend>连接配置</legend>
         <div class="field">
           <label>Base URL</label>
-          <input type="text" id="cfg-baseUrl" placeholder="https://sd2.mengfactory.cn" />
+          <input type="text" id="cfg-baseUrl" placeholder="https://upload.volctokens.api.mengfactory.cn" />
         </div>
         <div class="field">
           <label>API Key</label>
@@ -98,7 +98,7 @@
         <div class="field">
           <label>快捷键组合</label>
           <div class="row">
-            <input type="text" id="sc-input" placeholder="CommandOrControl+Shift+A" style="flex:1;" />
+            <input type="text" id="sc-input" placeholder="CommandOrControl+Q" style="flex:1;" />
             <button id="btn-sc-record" title="点击后按下你想要的键位组合">🎙 录制</button>
           </div>
           <div class="hint-sm" id="sc-status" style="margin-top:6px;color:var(--fg-dim);font-size:11.5px;">当前快捷键: <span id="sc-current">—</span></div>
@@ -216,7 +216,7 @@
 <div id="toast" class="toast"></div>
 
 <script>
-(() => {
+(async () => {
   const $ = (id) => document.getElementById(id);
   const toast = (msg, kind="") => {
     const t = $("toast");
@@ -226,23 +226,82 @@
     toast._t = setTimeout(() => t.classList.remove("show"), 2400);
   };
 
-  // ---- config (localStorage) ----
+  // ---- config (apiKey via OS-level safeStorage; baseUrl in plaintext localStorage is fine) ----
+  const _SD_DEFAULT_BASE = "https://upload.volctokens.api.mengfactory.cn";
+  // one-time migration: 旧默认值 https://sd2.mengfactory.cn -> 新默认 volctokens 上传域
+  try {
+    const _saved = localStorage.getItem("sd_baseUrl");
+    if (!_saved || _saved === "https://sd2.mengfactory.cn") {
+      localStorage.setItem("sd_baseUrl", _SD_DEFAULT_BASE);
+    }
+  } catch {}
+
+  // 内存缓存解密后的 apiKey，避免同步访问 localStorage 拿到密文
+  let _cachedApiKey = "";
+  const _secrets = window.seedanceAssets && window.seedanceAssets.secrets;
+
+  // 启动迁移：localStorage 里若残留明文 sd_apiKey，加密后改写为 sd_apiKey_enc，立即清掉明文
+  try {
+    const _legacyKey = localStorage.getItem("sd_apiKey");
+    if (_legacyKey && _secrets && (await _secrets.isAvailable())) {
+      const enc = await _secrets.encrypt(_legacyKey);
+      if (enc && enc.ok) {
+        localStorage.setItem("sd_apiKey_enc", enc.cipher);
+        _cachedApiKey = _legacyKey;
+      }
+      localStorage.removeItem("sd_apiKey");
+    } else if (_legacyKey) {
+      // safeStorage 不可用：保留明文降级，但仍读出来用
+      _cachedApiKey = _legacyKey;
+    }
+  } catch (e) { console.warn("[secrets] legacy migrate failed:", e && e.message); }
+
+  // 正常路径：从 sd_apiKey_enc 解密
+  if (!_cachedApiKey) {
+    try {
+      const enc = localStorage.getItem("sd_apiKey_enc");
+      if (enc && _secrets) {
+        const r = await _secrets.decrypt(enc);
+        if (r && r.ok) _cachedApiKey = r.plain || "";
+      }
+    } catch (e) { console.warn("[secrets] decrypt failed:", e && e.message); }
+  }
+
   const cfg = {
     get: () => ({
-      baseUrl: localStorage.getItem("sd_baseUrl") || "https://sd2.mengfactory.cn",
-      apiKey:  localStorage.getItem("sd_apiKey")  || "",
+      baseUrl: localStorage.getItem("sd_baseUrl") || _SD_DEFAULT_BASE,
+      apiKey:  _cachedApiKey || "",
     }),
-    save: (b, k) => {
+    save: async (b, k) => {
       localStorage.setItem("sd_baseUrl", b.trim().replace(/\/+$/,""));
-      localStorage.setItem("sd_apiKey",  k.trim());
+      const trimmed = (k || "").trim();
+      _cachedApiKey = trimmed;
+      if (!trimmed) {
+        localStorage.removeItem("sd_apiKey_enc");
+        return;
+      }
+      try {
+        if (_secrets && (await _secrets.isAvailable())) {
+          const enc = await _secrets.encrypt(trimmed);
+          if (enc && enc.ok) {
+            localStorage.setItem("sd_apiKey_enc", enc.cipher);
+            return;
+          }
+        }
+        // safeStorage 不可用时降级（仍然不写明文 sd_apiKey；但本机 OS 不支持加密就只能内存保存）
+        console.warn("[secrets] safeStorage unavailable, apiKey kept in memory only");
+        localStorage.removeItem("sd_apiKey_enc");
+      } catch (e) {
+        console.warn("[secrets] encrypt failed:", e && e.message);
+      }
     },
   };
   const c0 = cfg.get();
   $("cfg-baseUrl").value = c0.baseUrl;
   $("cfg-apiKey").value  = c0.apiKey;
 
-  $("btn-save-cfg").onclick = () => {
-    cfg.save($("cfg-baseUrl").value, $("cfg-apiKey").value);
+  $("btn-save-cfg").onclick = async () => {
+    await cfg.save($("cfg-baseUrl").value, $("cfg-apiKey").value);
     toast("配置已保存", "ok");
   };
   $("btn-toggle-key").onclick = () => {
@@ -289,7 +348,7 @@
     btn.textContent = on ? "● 按下键位…" : "🎙 录制";
     btn.style.background = on ? "var(--accent)" : "";
     btn.style.color      = on ? "#fff" : "";
-    $("sc-input").placeholder = on ? "请按下组合键…" : "CommandOrControl+Shift+A";
+    $("sc-input").placeholder = on ? "请按下组合键…" : "CommandOrControl+Q";
   }
   $("btn-sc-record").onclick = () => setRecording(!_scRecording);
   $("sc-input").addEventListener("keydown", (e) => {
@@ -372,7 +431,25 @@
       if (mode === "file" && !params.filePath) throw new Error("请选择本地文件");
       const r = await window.seedanceAssets.create(params);
       if (!r.ok) throw new Error(r.error || "提交失败");
-      toast(`入库成功：${r.data?.asset?.asset_id || ""}`, "ok");
+      const asset_uri = r.asset_uri || "";
+      const asset_id  = r.asset_id  || "";
+      const status    = r.asset_status || "";
+      // 自动复制 asset_uri 到剪贴板
+      if (asset_uri) {
+        try { await window.seedanceAssets.copyText(asset_uri); } catch {}
+      }
+      const shortId = asset_id ? asset_id.slice(0, 12) + "…" : "";
+      if (status === "active") {
+        toast(`入库成功并已复制：${asset_uri || shortId}`, "ok");
+      } else if (status === "processing") {
+        toast(`入库成功，正在处理中（已复制 asset_uri）`, "ok");
+        // 自动轮询直到 active 或 failed，最多 60s
+        if (asset_id) pollAssetStatus(asset_id);
+      } else if (asset_uri) {
+        toast(`入库成功并已复制：${asset_uri}`, "ok");
+      } else {
+        toast(`入库成功：${shortId}`, "ok");
+      }
       $("new-url").value=""; $("new-file-path").value=""; $("new-name").value=""; $("new-desc").value="";
       await loadList();
     } catch (e) {
@@ -381,6 +458,33 @@
       btn.disabled = false; btn.textContent = "提交入库";
     }
   };
+
+  // 轮询素材状态：最多 60s，每 4s 一次
+  async function pollAssetStatus(asset_id) {
+    const c = cfg.get();
+    if (!c.apiKey || !asset_id) return;
+    const startedAt = Date.now();
+    const MAX_MS = 60_000;
+    while (Date.now() - startedAt < MAX_MS) {
+      await new Promise(res => setTimeout(res, 4000));
+      try {
+        const r = await window.seedanceAssets.get({ baseUrl: c.baseUrl, apiKey: c.apiKey, asset_id, refresh: true });
+        if (!r || !r.ok) continue;
+        const st = r.data?.asset?.status || r.data?.status;
+        if (st === "active") {
+          toast(`素材已就绪：asset://${asset_id.slice(0,12)}…`, "ok");
+          await loadList();
+          return;
+        }
+        if (st === "failed") {
+          toast(`素材处理失败：${r.data?.asset?.last_error || "未知原因"}`, "err");
+          await loadList();
+          return;
+        }
+      } catch {}
+    }
+    toast(`素材仍在处理中，请稍后手动刷新`, "");
+  }
 
   // ---- list ----
   let page = 1, pageSize = 20, totalPages = 1;
@@ -398,10 +502,22 @@
     return `<span class="status ${cls}">${s||"unknown"}</span>`;
   }
 
+  function safeImageSrc(u) {
+    // 协议白名单：拒绝 javascript: / file: / data:text/html 等。仅允许 http(s) / blob: / data:image/。
+    try {
+      const parsed = new URL(u);
+      const proto = parsed.protocol;
+      if (proto === "http:" || proto === "https:" || proto === "blob:") return u;
+      if (proto === "data:" && /^data:image\//i.test(u)) return u;
+      return "";
+    } catch { return ""; }
+  }
+
   function rowHTML(a) {
     const assetUri = `asset://${a.asset_id}`;
+    // 占位 <img>，真实 src 通过 .src 赋值（避免 innerHTML 模板拼接）
     const preview = a.url
-      ? `<img src="${escapeHtml(a.url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'×'}))" />`
+      ? `<img data-src-key="${escapeHtml(a.asset_id)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'×'}))" />`
       : `<div class="ph">—</div>`;
     return `<tr data-id="${escapeHtml(a.asset_id)}">
       <td class="thumb">${preview}</td>
@@ -451,6 +567,14 @@
         tbody.innerHTML = `<tr><td colspan="6" class="empty">暂无素材</td></tr>`;
       } else {
         tbody.innerHTML = assets.map(rowHTML).join("");
+        // 通过 .src 赋值（替代 innerHTML 模板拼接），并走协议白名单
+        const byId = new Map(assets.map(a => [String(a.asset_id), a]));
+        tbody.querySelectorAll("img[data-src-key]").forEach((img) => {
+          const a = byId.get(img.getAttribute("data-src-key"));
+          const safe = a && a.url ? safeImageSrc(a.url) : "";
+          if (safe) img.src = safe;
+          else img.replaceWith(Object.assign(document.createElement("div"), { className: "ph", textContent: "×" }));
+        });
       }
       $("page-info").textContent = `第 ${page} / ${totalPages} 页 · 共 ${total} 条`;
     } catch (e) {

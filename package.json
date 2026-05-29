@@ -1,8 +1,15 @@
 {
   "name": "sanshiman",
-  "version": "1.0.10",
+  "version": "1.0.14",
   "description": "叁视漫 客户端",
   "main": "./out/main/index.js",
+  "scripts": {
+    "build": "electron-vite build",
+    "build:win": "electron-vite build && electron-builder --win",
+    "preview": "electron-vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
   "author": "example.com",
   "homepage": "https://electron-vite.org",
   "dependencies": {
@@ -20,7 +27,11 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
-    "electron-builder": "^26.8.1"
+    "electron-builder": "^26.8.1",
+    "electron-vite": "^4.0.1",
+    "jsdom": "^29.1.1",
+    "vite": "^7.3.3",
+    "vitest": "^4.1.7"
   },
   "build": {
     "appId": "com.sanshiman.app",
@@ -45,7 +56,17 @@
       "!node_modules/7zip-bin/**",
       "!node_modules/electron/**",
       "!node_modules/@electron/windows-sign/**",
-      "!dist/**"
+      "!dist/**",
+      "!**/.git/**",
+      "!**/.gitignore",
+      "!**/.gitattributes",
+      "!**/*.bak",
+      "!**/*.bak.*",
+      "!build-release.bat",
+      "!vitest.config.js",
+      "!tsconfig.json",
+      "!src/**",
+      "!electron.vite.config.mjs"
     ],
     "asarUnpack": [
       "node_modules/better-sqlite3/**/*"

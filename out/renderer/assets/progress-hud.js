@@ -69,9 +69,9 @@
     const done = isTerminal(task)
     const ok = task.status === "completed"
     const failed = task.status === "failed"
-    const resultUrl = task.resultUrl || (card.data && card.data.resultUrl) || ""
 
     let card = cards.get(id)
+    const resultUrl = task.resultUrl || (card && card.data && card.data.resultUrl) || ""
 
     if (!card) {
       card = { el: createCard(id, label, progress, status), data: task, removeTimer: null }
