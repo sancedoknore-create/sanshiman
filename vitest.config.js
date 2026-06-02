@@ -4,6 +4,10 @@ import { resolve } from 'path'
 export default defineConfig({
   test: {
     environment: 'jsdom',
+    environmentOptions: {
+      jsdom: { url: 'http://localhost/' }
+    },
+    setupFiles: ['./src/test-setup.js'],
     globals: true,
     include: ['src/**/*.{test,spec}.{js,jsx}'],
     exclude: ['node_modules', 'out', 'dist'],
