@@ -149,5 +149,49 @@
 
   window.sanshimanAssetViewer.MiniLightbox = MiniLightbox;
 
+  // ============== NodeAugmenter ==============
+  const MANAGED_ATTR = 'data-sv-managed';
+  const VIEWER_ATTR = 'data-viewer-only';
+
+  function isInputImageNode(el) {
+    if (!el || el.nodeType !== 1) return false;
+    if (!el.hasAttribute('data-id')) return false;
+    const id = el.getAttribute('data-id') || '';
+    if (!id.startsWith('node_')) return false;
+
+    // 主路径：data-node-type
+    const t = el.getAttribute('data-node-type');
+    if (t === 'input-image' || t === 'video-input') return true;
+    if (t) return false; // 明确写了别的类型，不是我们的菜
+
+    // 兜底：节点内有 img/video + 有 .react-flow__handle
+    const hasMedia = el.querySelector('img, video');
+    const hasHandle = el.querySelector('.react-flow__handle');
+    return !!(hasMedia && hasHandle);
+  }
+
+  function applyViewerState(el, nodeId) {
+    const state = ViewerStateStore.get(nodeId);
+    if (state && state.viewer) {
+      el.setAttribute(VIEWER_ATTR, 'true');
+    } else {
+      el.removeAttribute(VIEWER_ATTR);
+    }
+  }
+
+  function augment(el) {
+    if (!isInputImageNode(el)) return;
+    if (el.getAttribute(MANAGED_ATTR) === '1') return; // 幂等
+
+    const nodeId = el.getAttribute('data-id');
+    el.setAttribute(MANAGED_ATTR, '1');
+    applyViewerState(el, nodeId);
+
+    // 后续任务在这里加：眼睛按钮、引导气泡、resize 把手、点击 lightbox、自动尺寸
+  }
+
+  const NodeAugmenter = { augment, isInputImageNode };
+  window.sanshimanAssetViewer.NodeAugmenter = NodeAugmenter;
+
   console.log('[asset-viewer] loaded v' + VERSION);
 })();
