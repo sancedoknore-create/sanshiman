@@ -143,11 +143,6 @@ describe('NodeAugmenter.augment', () => {
     expect(el.querySelectorAll('.sv-toggle-btn').length).toBe(1)
   })
 
-  function getMediaUrl(el) {
-    const m = el.querySelector('img, video')
-    return m ? m.src : null
-  }
-
   it('extracts filename from img src into label', () => {
     const el = makeNodeEl({ id: 'node_fn_1' })
     el.querySelector('img').src = 'sanshiman://local/?path=' + encodeURIComponent('C:/foo/bar/abc.png')
@@ -159,11 +154,21 @@ describe('NodeAugmenter.augment', () => {
     expect(label.textContent).toBe('abc.png')
   })
 
-  it('filename label hidden when not in viewer mode', () => {
+  it('filename label is injected regardless of mode (visibility controlled by CSS)', () => {
     const el = makeNodeEl({ id: 'node_fn_2' })
     document.body.appendChild(el)
     aug.augment(el)
     expect(el.getAttribute('data-viewer-only')).toBeNull()
+    // 标签始终注入，靠 CSS 选择器 [data-viewer-only="true"] .sv-filename 控制显隐
+    expect(el.querySelector('.sv-filename')).toBeTruthy()
+  })
+
+  it('skips filename label injection when path cannot be decoded', () => {
+    const el = makeNodeEl({ id: 'node_fn_empty' })
+    el.querySelector('img').src = 'sanshiman://local/?path='
+    document.body.appendChild(el)
+    aug.augment(el)
+    expect(el.querySelector('.sv-filename')).toBeNull()
   })
 
   it('clicking node center in viewer mode opens lightbox', () => {
@@ -173,8 +178,7 @@ describe('NodeAugmenter.augment', () => {
     store.set('node_lb_1', { viewer: true })
     aug.augment(el)
 
-    const target = el.querySelector('.sv-center-clickable') || el.querySelector('img')
-    target.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    el.querySelector('img').dispatchEvent(new MouseEvent('click', { bubbles: true }))
 
     expect(document.querySelector('.sv-lightbox-overlay')).toBeTruthy()
     window.sanshimanAssetViewer.MiniLightbox.close()

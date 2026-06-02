@@ -204,9 +204,9 @@
     try {
       const u = new URL(url);
       const p = u.searchParams.get('path');
-      if (p) {
+      if (p !== null) {
         const decoded = decodeURIComponent(p);
-        const parts = decoded.split(/[/\\]/);
+        const parts = decoded.split(/[/\\]/).filter(Boolean);
         return parts[parts.length - 1] || '';
       }
     } catch {}
@@ -220,6 +220,7 @@
     const media = el.querySelector('img, video');
     if (!media) return;
     const filename = decodePathFromContent(media.src);
+    if (!filename) return;
     const label = document.createElement('div');
     label.className = 'sv-filename';
     label.textContent = filename;
@@ -231,6 +232,7 @@
     if (el.dataset.svClickWired === '1') return;
     el.dataset.svClickWired = '1';
 
+    // 监听器一旦挂上就常驻；切出查看器形态时按 attr 判断短路即可。
     el.addEventListener('click', function (e) {
       // 只在查看器形态下触发
       if (el.getAttribute(VIEWER_ATTR) !== 'true') return;
