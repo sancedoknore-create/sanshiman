@@ -155,3 +155,47 @@
   background: rgba(180, 100, 220, 0.9);
   box-shadow: 0 0 8px rgba(180, 100, 220, 0.7);
 }
+
+/* ============== Onboard 引导气泡 ============== */
+.sv-onboard-bubble {
+  position: absolute;
+  top: -36px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, rgba(60, 30, 100, 0.95) 0%, rgba(20, 40, 80, 0.95) 100%);
+  border: 1px solid rgba(180, 100, 220, 0.6);
+  border-radius: 14px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-family: 'Courier New', monospace;
+  color: rgba(200, 230, 255, 0.95);
+  white-space: nowrap;
+  box-shadow: 0 0 12px rgba(180, 100, 220, 0.4);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  animation: sv-onboard-fade-in 0.3s ease-out;
+}
+.sv-onboard-action {
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.sv-onboard-action:hover {
+  color: rgba(180, 220, 255, 1);
+  text-shadow: 0 0 6px rgba(100, 200, 255, 0.7);
+}
+.sv-onboard-close {
+  cursor: pointer;
+  opacity: 0.6;
+  padding: 0 2px;
+  font-size: 10px;
+}
+.sv-onboard-close:hover {
+  opacity: 1;
+  color: rgba(255, 100, 100, 0.9);
+}
+@keyframes sv-onboard-fade-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}

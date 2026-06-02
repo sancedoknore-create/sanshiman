@@ -194,6 +194,7 @@
       e.preventDefault();
       ViewerStateStore.toggle(nodeId);
       applyViewerState(el, nodeId);
+      maybeInitSize(el, nodeId);
     });
     // mousedown 也阻止冒泡 — ReactFlow 在 mousedown 上启动节点拖动
     btn.addEventListener('mousedown', function (e) { e.stopPropagation(); });
@@ -308,6 +309,79 @@
     el.appendChild(h);
   }
 
+  // ============== 自动尺寸初始化 ==============
+  let measureImageFactory = function () { return new Image(); };
+
+  function maybeInitSize(el, nodeId) {
+    if (el.getAttribute(VIEWER_ATTR) !== 'true') return;
+    const saved = ViewerStateStore.get(nodeId);
+    if (saved && saved.w && saved.h) {
+      el.style.width = saved.w + 'px';
+      el.style.height = saved.h + 'px';
+      return;
+    }
+    const media = el.querySelector('img, video');
+    if (!media) return;
+    const url = media.src;
+
+    const probe = measureImageFactory();
+    probe.onload = function () {
+      const nw = probe.naturalWidth || 0;
+      const nh = probe.naturalHeight || 0;
+      let w = 320, h = 320;
+      if (nw && nh) {
+        if (nw >= nh) { w = 320; h = Math.max(MIN_SIZE, Math.round(320 * nh / nw)); }
+        else          { h = 320; w = Math.max(MIN_SIZE, Math.round(320 * nw / nh)); }
+      }
+      el.style.width = w + 'px';
+      el.style.height = h + 'px';
+      ViewerStateStore.set(nodeId, { w, h });
+    };
+    probe.onerror = function () {
+      el.style.width = '240px';
+      el.style.height = '240px';
+      ViewerStateStore.set(nodeId, { w: 240, h: 240 });
+    };
+    probe.src = url;
+  }
+
+  // ============== Onboard 引导气泡 ==============
+  function injectOnboardBubble(el, nodeId) {
+    if (el.querySelector(':scope > .sv-onboard-bubble')) return;
+    const bubble = document.createElement('div');
+    bubble.className = 'sv-onboard-bubble';
+
+    const action = document.createElement('span');
+    action.className = 'sv-onboard-action';
+    action.textContent = '🔍 当查看器';
+    action.addEventListener('click', function (e) {
+      e.stopPropagation();
+      ViewerStateStore.toggle(nodeId);
+      applyViewerState(el, nodeId);
+      maybeInitSize(el, nodeId);
+      removeBubble();
+    });
+
+    const close = document.createElement('span');
+    close.className = 'sv-onboard-close';
+    close.textContent = '✕';
+    close.addEventListener('click', function (e) {
+      e.stopPropagation();
+      removeBubble();
+    });
+
+    function removeBubble() {
+      if (bubble.parentNode) bubble.parentNode.removeChild(bubble);
+      clearTimeout(autoTimer);
+    }
+
+    bubble.appendChild(action);
+    bubble.appendChild(close);
+    el.appendChild(bubble);
+
+    const autoTimer = setTimeout(removeBubble, 5000);
+  }
+
   function augment(el) {
     if (!isInputImageNode(el)) return;
     if (el.getAttribute(MANAGED_ATTR) === '1') return; // 幂等
@@ -332,8 +406,79 @@
     // 后续任务在这里加：引导气泡、自动尺寸
   }
 
-  const NodeAugmenter = { augment, isInputImageNode };
+  const NodeAugmenter = {
+    augment,
+    isInputImageNode,
+    _maybeInitSize: maybeInitSize,
+    _setMeasureImageFactory(factory) { measureImageFactory = factory; },
+  };
   window.sanshimanAssetViewer.NodeAugmenter = NodeAugmenter;
+
+  // ============== Startup grace + MutationObserver ==============
+  const STARTUP_GRACE_MS = 3000;
+  let startupDone = false;
+  setTimeout(function () { startupDone = true; }, STARTUP_GRACE_MS);
+
+  function isStartupGraceActive() {
+    if (window.__SV_TEST_SKIP_GRACE) return false;
+    return !startupDone;
+  }
+
+  function processNode(el, isInitialScan) {
+    if (!isInputImageNode(el)) return;
+    const wasManaged = el.getAttribute(MANAGED_ATTR) === '1';
+    augment(el);
+    if (!wasManaged && !isInitialScan && !isStartupGraceActive()) {
+      const nodeId = el.getAttribute('data-id');
+      const state = ViewerStateStore.get(nodeId);
+      if (!state || !state.viewer) {
+        // 等节点动画稳定 200ms 再弹
+        setTimeout(function () {
+          if (el.isConnected) injectOnboardBubble(el, nodeId);
+        }, 200);
+      }
+    }
+  }
+
+  function observeAndAugment() {
+    if (window.__sv_observed) return;
+    window.__sv_observed = true;
+
+    const observer = new MutationObserver(function (mutations) {
+      for (const m of mutations) {
+        for (const added of m.addedNodes) {
+          if (added.nodeType !== 1) continue;
+          processNode(added, false);
+          if (added.querySelectorAll) {
+            const inner = added.querySelectorAll('[data-id^="node_"]');
+            inner.forEach(n => processNode(n, false));
+          }
+        }
+      }
+    });
+
+    function attachObserver() {
+      const roots = document.querySelectorAll('.react-flow');
+      if (roots.length === 0) {
+        // 画布还没渲染，再等等
+        setTimeout(attachObserver, 200);
+        return;
+      }
+      roots.forEach(r => observer.observe(r, { childList: true, subtree: true }));
+      // 初始扫描
+      roots.forEach(r => {
+        r.querySelectorAll('[data-id^="node_"]').forEach(n => processNode(n, true));
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', attachObserver);
+    } else {
+      attachObserver();
+    }
+  }
+
+  observeAndAugment();
 
   console.log('[asset-viewer] loaded v' + VERSION);
 })();
