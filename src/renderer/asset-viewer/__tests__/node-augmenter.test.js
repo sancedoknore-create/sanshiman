@@ -142,4 +142,62 @@ describe('NodeAugmenter.augment', () => {
     aug.augment(el)
     expect(el.querySelectorAll('.sv-toggle-btn').length).toBe(1)
   })
+
+  function getMediaUrl(el) {
+    const m = el.querySelector('img, video')
+    return m ? m.src : null
+  }
+
+  it('extracts filename from img src into label', () => {
+    const el = makeNodeEl({ id: 'node_fn_1' })
+    el.querySelector('img').src = 'sanshiman://local/?path=' + encodeURIComponent('C:/foo/bar/abc.png')
+    document.body.appendChild(el)
+    store.set('node_fn_1', { viewer: true })
+    aug.augment(el)
+    const label = el.querySelector('.sv-filename')
+    expect(label).toBeTruthy()
+    expect(label.textContent).toBe('abc.png')
+  })
+
+  it('filename label hidden when not in viewer mode', () => {
+    const el = makeNodeEl({ id: 'node_fn_2' })
+    document.body.appendChild(el)
+    aug.augment(el)
+    expect(el.getAttribute('data-viewer-only')).toBeNull()
+  })
+
+  it('clicking node center in viewer mode opens lightbox', () => {
+    const el = makeNodeEl({ id: 'node_lb_1' })
+    el.querySelector('img').src = 'sanshiman://local/?path=foo.png'
+    document.body.appendChild(el)
+    store.set('node_lb_1', { viewer: true })
+    aug.augment(el)
+
+    const target = el.querySelector('.sv-center-clickable') || el.querySelector('img')
+    target.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    expect(document.querySelector('.sv-lightbox-overlay')).toBeTruthy()
+    window.sanshimanAssetViewer.MiniLightbox.close()
+  })
+
+  it('clicking node center in non-viewer mode does NOT open lightbox', () => {
+    const el = makeNodeEl({ id: 'node_lb_2' })
+    document.body.appendChild(el)
+    aug.augment(el)
+
+    const img = el.querySelector('img')
+    img.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(document.querySelector('.sv-lightbox-overlay')).toBeNull()
+  })
+
+  it('clicking eye button does not also open lightbox', () => {
+    const el = makeNodeEl({ id: 'node_lb_3' })
+    document.body.appendChild(el)
+    store.set('node_lb_3', { viewer: true })
+    aug.augment(el)
+
+    const btn = el.querySelector('.sv-toggle-btn')
+    btn.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(document.querySelector('.sv-lightbox-overlay')).toBeNull()
+  })
 })

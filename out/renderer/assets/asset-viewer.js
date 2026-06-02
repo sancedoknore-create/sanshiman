@@ -198,6 +198,55 @@
     el.appendChild(btn);
   }
 
+  function decodePathFromContent(url) {
+    // url 形如 sanshiman://local/?path=<encoded>
+    if (!url) return '';
+    try {
+      const u = new URL(url);
+      const p = u.searchParams.get('path');
+      if (p) {
+        const decoded = decodeURIComponent(p);
+        const parts = decoded.split(/[/\\]/);
+        return parts[parts.length - 1] || '';
+      }
+    } catch {}
+    // 兜底：从 url 末尾切
+    const parts = url.split(/[/\\?]/).filter(Boolean);
+    return parts[parts.length - 1] || '';
+  }
+
+  function injectFilenameLabel(el) {
+    if (el.querySelector(':scope > .sv-filename')) return;
+    const media = el.querySelector('img, video');
+    if (!media) return;
+    const filename = decodePathFromContent(media.src);
+    const label = document.createElement('div');
+    label.className = 'sv-filename';
+    label.textContent = filename;
+    label.title = filename;
+    el.appendChild(label);
+  }
+
+  function injectCenterClickHandler(el, nodeId) {
+    if (el.dataset.svClickWired === '1') return;
+    el.dataset.svClickWired = '1';
+
+    el.addEventListener('click', function (e) {
+      // 只在查看器形态下触发
+      if (el.getAttribute(VIEWER_ATTR) !== 'true') return;
+      // 排除按钮和把手
+      const t = e.target;
+      if (t.closest('.sv-toggle-btn')) return;
+      if (t.closest('.sv-resize-handle')) return;
+      if (t.closest('.sv-onboard-bubble')) return;
+      const media = el.querySelector('img, video');
+      if (!media) return;
+      const url = media.src;
+      const isVideo = media.tagName === 'VIDEO';
+      MiniLightbox.open({ url, isVideo });
+    });
+  }
+
   function augment(el) {
     if (!isInputImageNode(el)) return;
     if (el.getAttribute(MANAGED_ATTR) === '1') return; // 幂等
@@ -208,8 +257,10 @@
     el.setAttribute(MANAGED_ATTR, '1');
     applyViewerState(el, nodeId);
     injectEyeButton(el, nodeId);
+    injectFilenameLabel(el);
+    injectCenterClickHandler(el, nodeId);
 
-    // 后续任务在这里加：引导气泡、resize 把手、点击 lightbox、自动尺寸
+    // 后续任务在这里加：引导气泡、resize 把手、自动尺寸
   }
 
   const NodeAugmenter = { augment, isInputImageNode };
