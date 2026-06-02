@@ -179,6 +179,25 @@
     }
   }
 
+  function injectEyeButton(el, nodeId) {
+    if (el.querySelector(':scope > .sv-toggle-btn')) return; // 幂等
+    const btn = document.createElement('button');
+    btn.className = 'sv-toggle-btn';
+    btn.type = 'button';
+    btn.setAttribute('aria-label', '切换查看器形态');
+    btn.title = '切换查看器形态';
+    btn.textContent = '👁';
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      ViewerStateStore.toggle(nodeId);
+      applyViewerState(el, nodeId);
+    });
+    // mousedown 也阻止冒泡 — ReactFlow 在 mousedown 上启动节点拖动
+    btn.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+    el.appendChild(btn);
+  }
+
   function augment(el) {
     if (!isInputImageNode(el)) return;
     if (el.getAttribute(MANAGED_ATTR) === '1') return; // 幂等
@@ -188,8 +207,9 @@
     const nodeId = el.getAttribute('data-id');
     el.setAttribute(MANAGED_ATTR, '1');
     applyViewerState(el, nodeId);
+    injectEyeButton(el, nodeId);
 
-    // 后续任务在这里加：眼睛按钮、引导气泡、resize 把手、点击 lightbox、自动尺寸
+    // 后续任务在这里加：引导气泡、resize 把手、点击 lightbox、自动尺寸
   }
 
   const NodeAugmenter = { augment, isInputImageNode };

@@ -85,4 +85,49 @@ describe('NodeAugmenter.augment', () => {
     aug.augment(el)
     expect(el.getAttribute('data-viewer-only')).toBe('true')
   })
+
+  it('adds eye toggle button after augment', () => {
+    const el = makeNodeEl({ id: 'node_eye_1' })
+    document.body.appendChild(el)
+    aug.augment(el)
+    const btn = el.querySelector('.sv-toggle-btn')
+    expect(btn).toBeTruthy()
+    expect(btn.getAttribute('aria-label')).toMatch(/查看器|viewer/i)
+  })
+
+  it('eye toggle flips viewer-only attribute on click', () => {
+    const el = makeNodeEl({ id: 'node_eye_2' })
+    document.body.appendChild(el)
+    aug.augment(el)
+    expect(el.getAttribute('data-viewer-only')).toBeNull()
+
+    const btn = el.querySelector('.sv-toggle-btn')
+    btn.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(el.getAttribute('data-viewer-only')).toBe('true')
+    expect(store.get('node_eye_2').viewer).toBe(true)
+
+    btn.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(el.getAttribute('data-viewer-only')).toBeNull()
+    expect(store.get('node_eye_2').viewer).toBe(false)
+  })
+
+  it('eye toggle click does not bubble to node (stopPropagation)', () => {
+    const el = makeNodeEl({ id: 'node_eye_3' })
+    document.body.appendChild(el)
+    aug.augment(el)
+
+    let nodeReceivedClick = false
+    el.addEventListener('click', () => { nodeReceivedClick = true })
+    const btn = el.querySelector('.sv-toggle-btn')
+    btn.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(nodeReceivedClick).toBe(false)
+  })
+
+  it('augment idempotent — second call does not duplicate eye button', () => {
+    const el = makeNodeEl({ id: 'node_eye_4' })
+    document.body.appendChild(el)
+    aug.augment(el)
+    aug.augment(el)
+    expect(el.querySelectorAll('.sv-toggle-btn').length).toBe(1)
+  })
 })
