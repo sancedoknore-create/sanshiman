@@ -37,7 +37,8 @@
     return {
       get(nodeId) {
         const all = load();
-        return all[nodeId] || null;
+        const entry = all[nodeId];
+        return entry ? { ...entry } : null;
       },
       set(nodeId, state) {
         const all = load();
