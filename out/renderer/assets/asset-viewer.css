@@ -149,9 +149,6 @@
 [data-viewer-only="true"] .sv-resize-handle {
   display: block;
 }
-.sv-rh-tl { top: -4px;    left: -4px;    cursor: nwse-resize; }
-.sv-rh-tr { top: -4px;    right: -4px;   cursor: nesw-resize; }
-.sv-rh-bl { bottom: -4px; left: -4px;    cursor: nesw-resize; }
 .sv-rh-br { bottom: -4px; right: -4px;   cursor: nwse-resize; }
 
 .sv-resize-handle:hover {

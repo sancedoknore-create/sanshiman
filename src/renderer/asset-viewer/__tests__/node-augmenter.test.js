@@ -205,15 +205,12 @@ describe('NodeAugmenter.augment', () => {
     expect(document.querySelector('.sv-lightbox-overlay')).toBeNull()
   })
 
-  it('inserts 4 resize handles after augment', () => {
+  it('inserts BR resize handle after augment', () => {
     const el = makeNodeEl({ id: 'node_rs_1' })
     document.body.appendChild(el)
     aug.augment(el)
     const handles = el.querySelectorAll('.sv-resize-handle')
-    expect(handles.length).toBe(4)
-    expect(el.querySelector('.sv-rh-tl')).toBeTruthy()
-    expect(el.querySelector('.sv-rh-tr')).toBeTruthy()
-    expect(el.querySelector('.sv-rh-bl')).toBeTruthy()
+    expect(handles.length).toBe(1)
     expect(el.querySelector('.sv-rh-br')).toBeTruthy()
   })
 
@@ -269,5 +266,29 @@ describe('NodeAugmenter.augment', () => {
     br.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 0, clientY: 0 }))
     expect(nodeReceived).toBe(false)
     document.dispatchEvent(new MouseEvent('mouseup'))
+  })
+
+  it('startResize ignores second handle mousedown while a resize is in flight', () => {
+    const el = makeNodeEl({ id: 'node_rs_concurrent' })
+    el.style.width = '200px'
+    el.style.height = '150px'
+    Object.defineProperty(el, 'offsetWidth', { configurable: true, value: 200 })
+    Object.defineProperty(el, 'offsetHeight', { configurable: true, value: 150 })
+    document.body.appendChild(el)
+    aug.augment(el)
+    const br = el.querySelector('.sv-rh-br')
+
+    // 第一次按下
+    br.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 200, clientY: 150 }))
+    const userSelectAfterFirst = document.body.style.userSelect
+    expect(userSelectAfterFirst).toBe('none')
+
+    // 第二次按下（同一手柄，模拟双重事件）— 不应再次改变 body style
+    br.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 250, clientY: 180 }))
+    expect(document.body.style.userSelect).toBe(userSelectAfterFirst)
+
+    // 释放
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 200, clientY: 150 }))
+    expect(document.body.style.userSelect).toBe('')
   })
 })

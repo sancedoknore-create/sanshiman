@@ -152,6 +152,8 @@
   // ============== NodeAugmenter ==============
   const MANAGED_ATTR = 'data-sv-managed';
   const VIEWER_ATTR = 'data-viewer-only';
+  const MIN_SIZE = 120; // resize 最小尺寸（px），留够 lightbox 触发区
+  let isResizing = false; // 防止双手柄同时按下导致 prev style 错乱
 
   function isInputImageNode(el) {
     if (!el || el.nodeType !== 1) return false;
@@ -250,6 +252,8 @@
   }
 
   function startResize(el, nodeId, signX, signY, startX, startY) {
+    if (isResizing) return; // 双手柄并发保护
+    isResizing = true;
     const startW = el.offsetWidth || 200;
     const startH = el.offsetHeight || 200;
     const prevUserSelect = document.body.style.userSelect;
@@ -257,20 +261,28 @@
     document.body.style.userSelect = 'none';
     document.body.style.cursor = (signX * signY > 0) ? 'nwse-resize' : 'nesw-resize';
 
+    function cleanup() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      window.removeEventListener('blur', onUp);
+      document.body.style.userSelect = prevUserSelect;
+      document.body.style.cursor = prevCursor;
+      isResizing = false;
+    }
+
     function onMove(e) {
       const dx = (e.clientX - startX) * signX;
       const dy = (e.clientY - startY) * signY;
-      let w = Math.max(120, startW + dx);
-      let h = Math.max(120, startH + dy);
+      const w = Math.max(MIN_SIZE, startW + dx);
+      const h = Math.max(MIN_SIZE, startH + dy);
       el.style.width = w + 'px';
       el.style.height = h + 'px';
     }
 
     function onUp() {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      document.body.style.userSelect = prevUserSelect;
-      document.body.style.cursor = prevCursor;
+      cleanup();
+      // 注：onMove 没跑过的时候 style.width/height 仍是 startResize 之前的值（可能是空），
+      //     parseInt 会回退到 offsetWidth/offsetHeight，这是预期行为。
       const w = parseInt(el.style.width, 10) || el.offsetWidth;
       const h = parseInt(el.style.height, 10) || el.offsetHeight;
       ViewerStateStore.set(nodeId, { w, h });
@@ -278,27 +290,22 @@
 
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
+    // 拖到窗口外松开 → window blur，避免卡住
+    window.addEventListener('blur', onUp);
   }
 
   function injectResizeHandles(el, nodeId) {
     if (el.querySelector(':scope > .sv-resize-handle')) return; // 幂等
-    const corners = [
-      ['tl', -1, -1],
-      ['tr',  1, -1],
-      ['bl', -1,  1],
-      ['br',  1,  1],
-    ];
-    for (const [pos, sx, sy] of corners) {
-      const h = document.createElement('div');
-      h.className = 'sv-resize-handle sv-rh-' + pos;
-      h.dataset.svCorner = pos;
-      h.addEventListener('mousedown', function (e) {
-        e.stopPropagation();
-        e.preventDefault();
-        startResize(el, nodeId, sx, sy, e.clientX, e.clientY);
-      });
-      el.appendChild(h);
-    }
+    // 只保留 BR 角：避免 TL/TR/BL 拖动时对面顶角不锚定造成的违和感（外部注入层够不着 ReactFlow node.position）。
+    const h = document.createElement('div');
+    h.className = 'sv-resize-handle sv-rh-br';
+    h.dataset.svCorner = 'br';
+    h.addEventListener('mousedown', function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      startResize(el, nodeId, 1, 1, e.clientX, e.clientY);
+    });
+    el.appendChild(h);
   }
 
   function augment(el) {
