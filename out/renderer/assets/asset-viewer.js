@@ -161,15 +161,25 @@
     const id = el.getAttribute('data-id') || '';
     if (!id.startsWith('node_')) return false;
 
-    // 主路径：data-node-type
-    const t = el.getAttribute('data-node-type');
+    // 实际 DOM 结构（来自 minified bundle）：
+    //   <div class="react-flow__node" data-id="node_xxx">     ← el（外层）
+    //     <div class="node-wrapper" data-node-type="..." data-node-id="node_xxx">  ← inner
+    //       ...
+    //
+    // 因此 data-node-type 不在 el 上，要去找直接子 .node-wrapper 或 [data-node-type]。
+
+    // 主路径 1：el 自己就有 data-node-type（防御性兼容直接挂在 el 上的情形）
+    let t = el.getAttribute('data-node-type');
+    // 主路径 2：el 内查找 [data-node-type]
+    if (!t) {
+      const inner = el.querySelector('[data-node-type]');
+      if (inner) t = inner.getAttribute('data-node-type');
+    }
     if (t === 'input-image' || t === 'video-input') return true;
     if (t) return false; // 明确写了别的类型，不是我们的菜
 
-    // 兜底：节点内有 img/video + 有 .react-flow__handle
-    const hasMedia = el.querySelector('img, video');
-    const hasHandle = el.querySelector('.react-flow__handle');
-    return !!(hasMedia && hasHandle);
+    // 兜底：节点内有 img/video（handle 在 minified bundle 里 className 不一定是 .react-flow__handle，放宽）
+    return !!el.querySelector('img, video');
   }
 
   function applyViewerState(el, nodeId) {
@@ -446,7 +456,18 @@
   }
 
   function processNode(el, isInitialScan) {
-    if (!isInputImageNode(el)) return;
+    // 时序兜底：外层 .react-flow__node 可能先于 inner .node-wrapper（带 data-node-type）挂载，
+    // 第一拍识别会失败。重试 5 次（5 × 100ms = 500ms 上限）等 React 把内部 DOM 补齐。
+    if (!isInputImageNode(el)) {
+      const retries = parseInt(el.dataset.svIdRetries || '0', 10);
+      if (retries >= 5) return;
+      el.dataset.svIdRetries = String(retries + 1);
+      setTimeout(function () {
+        if (el.isConnected) processNode(el, isInitialScan);
+      }, 100);
+      return;
+    }
+    delete el.dataset.svIdRetries;
     const wasManaged = el.getAttribute(MANAGED_ATTR) === '1';
     augment(el);
     if (!wasManaged && !isInitialScan && !isStartupGraceActive()) {

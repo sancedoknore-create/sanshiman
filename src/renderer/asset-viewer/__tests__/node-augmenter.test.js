@@ -86,6 +86,41 @@ describe('NodeAugmenter.augment', () => {
     expect(el.getAttribute('data-viewer-only')).toBe('true')
   })
 
+  it('recognises ReactFlow real DOM: data-id on outer, data-node-type on inner .node-wrapper', () => {
+    // 实际 minified bundle 的结构：
+    //   <div class="react-flow__node" data-id="node_xxx">
+    //     <div class="node-wrapper" data-node-type="input-image">...
+    const outer = document.createElement('div')
+    outer.className = 'react-flow__node'
+    outer.setAttribute('data-id', 'node_real_1')
+    const inner = document.createElement('div')
+    inner.className = 'node-wrapper'
+    inner.setAttribute('data-node-type', 'input-image')
+    inner.setAttribute('data-node-id', 'node_real_1')
+    const img = document.createElement('img')
+    img.src = 'sanshiman://local/?path=foo.png'
+    inner.appendChild(img)
+    outer.appendChild(inner)
+    document.body.appendChild(outer)
+
+    aug.augment(outer)
+    expect(outer.getAttribute('data-sv-managed')).toBe('1')
+    expect(outer.querySelector('.sv-toggle-btn')).toBeTruthy()
+  })
+
+  it('rejects ReactFlow node when inner data-node-type is gen-image (output, not input)', () => {
+    const outer = document.createElement('div')
+    outer.className = 'react-flow__node'
+    outer.setAttribute('data-id', 'node_real_2')
+    const inner = document.createElement('div')
+    inner.setAttribute('data-node-type', 'gen-image')
+    outer.appendChild(inner)
+    document.body.appendChild(outer)
+
+    aug.augment(outer)
+    expect(outer.getAttribute('data-sv-managed')).toBeNull()
+  })
+
   it('adds eye toggle button after augment', () => {
     const el = makeNodeEl({ id: 'node_eye_1' })
     document.body.appendChild(el)
