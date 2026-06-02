@@ -204,4 +204,70 @@ describe('NodeAugmenter.augment', () => {
     btn.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(document.querySelector('.sv-lightbox-overlay')).toBeNull()
   })
+
+  it('inserts 4 resize handles after augment', () => {
+    const el = makeNodeEl({ id: 'node_rs_1' })
+    document.body.appendChild(el)
+    aug.augment(el)
+    const handles = el.querySelectorAll('.sv-resize-handle')
+    expect(handles.length).toBe(4)
+    expect(el.querySelector('.sv-rh-tl')).toBeTruthy()
+    expect(el.querySelector('.sv-rh-tr')).toBeTruthy()
+    expect(el.querySelector('.sv-rh-bl')).toBeTruthy()
+    expect(el.querySelector('.sv-rh-br')).toBeTruthy()
+  })
+
+  it('br handle drag enlarges node and persists', () => {
+    const el = makeNodeEl({ id: 'node_rs_2' })
+    el.style.width = '200px'
+    el.style.height = '150px'
+    // jsdom 不会自动从 style 读 offsetWidth/Height，需要 stub
+    Object.defineProperty(el, 'offsetWidth', { configurable: true, value: 200 })
+    Object.defineProperty(el, 'offsetHeight', { configurable: true, value: 150 })
+    document.body.appendChild(el)
+    aug.augment(el)
+
+    const br = el.querySelector('.sv-rh-br')
+    br.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 200, clientY: 150 }))
+    document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 250, clientY: 180 }))
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 250, clientY: 180 }))
+
+    expect(parseInt(el.style.width, 10)).toBe(250)
+    expect(parseInt(el.style.height, 10)).toBe(180)
+    const saved = store.get('node_rs_2')
+    expect(saved.w).toBe(250)
+    expect(saved.h).toBe(180)
+  })
+
+  it('resize is clamped to minimum 120x120', () => {
+    const el = makeNodeEl({ id: 'node_rs_3' })
+    el.style.width = '200px'
+    el.style.height = '200px'
+    Object.defineProperty(el, 'offsetWidth', { configurable: true, value: 200 })
+    Object.defineProperty(el, 'offsetHeight', { configurable: true, value: 200 })
+    document.body.appendChild(el)
+    aug.augment(el)
+
+    const br = el.querySelector('.sv-rh-br')
+    br.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 200, clientY: 200 }))
+    document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 50, clientY: 50 }))
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 50, clientY: 50 }))
+
+    expect(parseInt(el.style.width, 10)).toBe(120)
+    expect(parseInt(el.style.height, 10)).toBe(120)
+  })
+
+  it('handle mousedown does NOT propagate (so ReactFlow does not move node)', () => {
+    const el = makeNodeEl({ id: 'node_rs_4' })
+    document.body.appendChild(el)
+    aug.augment(el)
+
+    let nodeReceived = false
+    el.addEventListener('mousedown', () => { nodeReceived = true })
+
+    const br = el.querySelector('.sv-rh-br')
+    br.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 0, clientY: 0 }))
+    expect(nodeReceived).toBe(false)
+    document.dispatchEvent(new MouseEvent('mouseup'))
+  })
 })

@@ -249,6 +249,58 @@
     });
   }
 
+  function startResize(el, nodeId, signX, signY, startX, startY) {
+    const startW = el.offsetWidth || 200;
+    const startH = el.offsetHeight || 200;
+    const prevUserSelect = document.body.style.userSelect;
+    const prevCursor = document.body.style.cursor;
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = (signX * signY > 0) ? 'nwse-resize' : 'nesw-resize';
+
+    function onMove(e) {
+      const dx = (e.clientX - startX) * signX;
+      const dy = (e.clientY - startY) * signY;
+      let w = Math.max(120, startW + dx);
+      let h = Math.max(120, startH + dy);
+      el.style.width = w + 'px';
+      el.style.height = h + 'px';
+    }
+
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.userSelect = prevUserSelect;
+      document.body.style.cursor = prevCursor;
+      const w = parseInt(el.style.width, 10) || el.offsetWidth;
+      const h = parseInt(el.style.height, 10) || el.offsetHeight;
+      ViewerStateStore.set(nodeId, { w, h });
+    }
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
+
+  function injectResizeHandles(el, nodeId) {
+    if (el.querySelector(':scope > .sv-resize-handle')) return; // 幂等
+    const corners = [
+      ['tl', -1, -1],
+      ['tr',  1, -1],
+      ['bl', -1,  1],
+      ['br',  1,  1],
+    ];
+    for (const [pos, sx, sy] of corners) {
+      const h = document.createElement('div');
+      h.className = 'sv-resize-handle sv-rh-' + pos;
+      h.dataset.svCorner = pos;
+      h.addEventListener('mousedown', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        startResize(el, nodeId, sx, sy, e.clientX, e.clientY);
+      });
+      el.appendChild(h);
+    }
+  }
+
   function augment(el) {
     if (!isInputImageNode(el)) return;
     if (el.getAttribute(MANAGED_ATTR) === '1') return; // 幂等
@@ -261,8 +313,16 @@
     injectEyeButton(el, nodeId);
     injectFilenameLabel(el);
     injectCenterClickHandler(el, nodeId);
+    injectResizeHandles(el, nodeId);
 
-    // 后续任务在这里加：引导气泡、resize 把手、自动尺寸
+    // 应用持久化的尺寸
+    const state = ViewerStateStore.get(nodeId);
+    if (state && state.w && state.h) {
+      el.style.width = state.w + 'px';
+      el.style.height = state.h + 'px';
+    }
+
+    // 后续任务在这里加：引导气泡、自动尺寸
   }
 
   const NodeAugmenter = { augment, isInputImageNode };
