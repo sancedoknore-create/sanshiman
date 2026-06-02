@@ -123,6 +123,18 @@ describe('NodeAugmenter.augment', () => {
     expect(nodeReceivedClick).toBe(false)
   })
 
+  it('eye toggle mousedown does not propagate (so ReactFlow does not start drag)', () => {
+    const el = makeNodeEl({ id: 'node_eye_md' })
+    document.body.appendChild(el)
+    aug.augment(el)
+    let nodeMousedown = false
+    el.addEventListener('mousedown', () => { nodeMousedown = true })
+    el.querySelector('.sv-toggle-btn').dispatchEvent(
+      new MouseEvent('mousedown', { bubbles: true })
+    )
+    expect(nodeMousedown).toBe(false)
+  })
+
   it('augment idempotent — second call does not duplicate eye button', () => {
     const el = makeNodeEl({ id: 'node_eye_4' })
     document.body.appendChild(el)
