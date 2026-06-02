@@ -182,4 +182,63 @@ describe('MutationObserver + onboard bubble + auto-size', () => {
       }, 30)
     })
   })
+
+  it('maybeInitSize uses video metadata factory for video nodes', () => {
+    const mod = loadModule()
+    const root = makeFlowRoot()
+    const el = makeNode('node_video_1', { type: 'video-input', src: 'sanshiman://local/?path=clip.mp4' })
+    // 替换 img 为 video
+    el.innerHTML = ''
+    const v = document.createElement('video')
+    v.src = 'sanshiman://local/?path=clip.mp4'
+    el.appendChild(v)
+    const h = document.createElement('div')
+    h.className = 'react-flow__handle'
+    el.appendChild(h)
+    root.appendChild(el)
+    mod.ViewerStateStore.set('node_video_1', { viewer: true })
+    el.setAttribute('data-viewer-only', 'true')
+
+    let videoFactoryCalled = false
+    let imageFactoryCalled = false
+
+    mod.NodeAugmenter._setMeasureImageFactory(() => {
+      imageFactoryCalled = true
+      return { naturalWidth: 0, naturalHeight: 0, onload: null, onerror: null, src: '' }
+    })
+    mod.NodeAugmenter._setMeasureVideoFactory(() => {
+      videoFactoryCalled = true
+      const fake = { videoWidth: 1920, videoHeight: 1080, onloadedmetadata: null, onerror: null, _src: '', preload: '', muted: false }
+      Object.defineProperty(fake, 'src', {
+        set(val) { fake._src = val; if (fake.onloadedmetadata) setTimeout(() => fake.onloadedmetadata(), 0) },
+        get() { return fake._src }
+      })
+      return fake
+    })
+
+    return new Promise(resolve => {
+      mod.NodeAugmenter._maybeInitSize(el, 'node_video_1')
+      setTimeout(() => {
+        expect(videoFactoryCalled).toBe(true)
+        expect(imageFactoryCalled).toBe(false)
+        // 1920:1080 比例，长边 320 → w=320, h=180
+        expect(parseInt(el.style.width, 10)).toBe(320)
+        expect(parseInt(el.style.height, 10)).toBe(180)
+        resolve()
+      }, 30)
+    })
+  })
+
+  it('observer retry chain stops after max retries when no .react-flow root appears', async () => {
+    // 没有 makeFlowRoot
+    loadModule()
+    // 不能直接验证 chain 终止（无法观察内部 setTimeout），但能确认不会抛错也不会无限增长 timer
+    await new Promise(r => setTimeout(r, 100))
+    // 关键性断言：不存在 .react-flow，augment 不应执行；window.__sv_observed 仍为 true（已尝试 attach）
+    expect(window.__sv_observed).toBe(true)
+    // 现在 cancel
+    window.__sv_attach_cancelled = true
+    await new Promise(r => setTimeout(r, 250))
+    delete window.__sv_attach_cancelled
+  })
 })

@@ -311,6 +311,24 @@
 
   // ============== 自动尺寸初始化 ==============
   let measureImageFactory = function () { return new Image(); };
+  let measureVideoFactory = function () { return document.createElement('video'); };
+
+  function _applyMeasured(el, nodeId, nw, nh) {
+    let w = 320, h = 320;
+    if (nw && nh) {
+      if (nw >= nh) { w = 320; h = Math.max(MIN_SIZE, Math.round(320 * nh / nw)); }
+      else          { h = 320; w = Math.max(MIN_SIZE, Math.round(320 * nw / nh)); }
+    }
+    el.style.width = w + 'px';
+    el.style.height = h + 'px';
+    ViewerStateStore.set(nodeId, { w, h });
+  }
+
+  function _applyFallback(el, nodeId) {
+    el.style.width = '240px';
+    el.style.height = '240px';
+    ViewerStateStore.set(nodeId, { w: 240, h: 240 });
+  }
 
   function maybeInitSize(el, nodeId) {
     if (el.getAttribute(VIEWER_ATTR) !== 'true') return;
@@ -323,30 +341,32 @@
     const media = el.querySelector('img, video');
     if (!media) return;
     const url = media.src;
+    const isVideo = media.tagName === 'VIDEO';
 
-    const probe = measureImageFactory();
-    probe.onload = function () {
-      const nw = probe.naturalWidth || 0;
-      const nh = probe.naturalHeight || 0;
-      let w = 320, h = 320;
-      if (nw && nh) {
-        if (nw >= nh) { w = 320; h = Math.max(MIN_SIZE, Math.round(320 * nh / nw)); }
-        else          { h = 320; w = Math.max(MIN_SIZE, Math.round(320 * nw / nh)); }
-      }
-      el.style.width = w + 'px';
-      el.style.height = h + 'px';
-      ViewerStateStore.set(nodeId, { w, h });
-    };
-    probe.onerror = function () {
-      el.style.width = '240px';
-      el.style.height = '240px';
-      ViewerStateStore.set(nodeId, { w: 240, h: 240 });
-    };
-    probe.src = url;
+    if (isVideo) {
+      // 视频用 detached <video> + loadedmetadata 读 videoWidth/videoHeight
+      const probe = measureVideoFactory();
+      probe.onloadedmetadata = function () {
+        _applyMeasured(el, nodeId, probe.videoWidth || 0, probe.videoHeight || 0);
+      };
+      probe.onerror = function () { _applyFallback(el, nodeId); };
+      probe.preload = 'metadata';
+      probe.muted = true;
+      probe.src = url;
+    } else {
+      // 图片用 detached Image()
+      const probe = measureImageFactory();
+      probe.onload = function () {
+        _applyMeasured(el, nodeId, probe.naturalWidth || 0, probe.naturalHeight || 0);
+      };
+      probe.onerror = function () { _applyFallback(el, nodeId); };
+      probe.src = url;
+    }
   }
 
   // ============== Onboard 引导气泡 ==============
   function injectOnboardBubble(el, nodeId) {
+    // :scope > 限制只查直接子节点，避免误命中其他子节点里的 onboard bubble（防 nested observer 误判）
     if (el.querySelector(':scope > .sv-onboard-bubble')) return;
     const bubble = document.createElement('div');
     bubble.className = 'sv-onboard-bubble';
@@ -402,8 +422,6 @@
       el.style.width = state.w + 'px';
       el.style.height = state.h + 'px';
     }
-
-    // 后续任务在这里加：引导气泡、自动尺寸
   }
 
   const NodeAugmenter = {
@@ -411,15 +429,18 @@
     isInputImageNode,
     _maybeInitSize: maybeInitSize,
     _setMeasureImageFactory(factory) { measureImageFactory = factory; },
+    _setMeasureVideoFactory(factory) { measureVideoFactory = factory; },
   };
   window.sanshimanAssetViewer.NodeAugmenter = NodeAugmenter;
 
   // ============== Startup grace + MutationObserver ==============
+  // 启动 3 秒内出现的节点视为「项目还原加载」，不弹引导气泡 — 避免 SQLite 重新加载几十个节点时屏幕被气泡淹没。
   const STARTUP_GRACE_MS = 3000;
   let startupDone = false;
   setTimeout(function () { startupDone = true; }, STARTUP_GRACE_MS);
 
   function isStartupGraceActive() {
+    // 测试专用旁路：让单元测试无需等 3 秒就能验证动态新增节点的引导气泡
     if (window.__SV_TEST_SKIP_GRACE) return false;
     return !startupDone;
   }
@@ -457,10 +478,13 @@
       }
     });
 
+    let retriesLeft = 50; // 50 × 200ms = 10s 上限，防止无限等待
     function attachObserver() {
+      // 测试中允许通过 window.__sv_observed = false + 重新 init 抢占
+      if (window.__sv_attach_cancelled) return;
       const roots = document.querySelectorAll('.react-flow');
       if (roots.length === 0) {
-        // 画布还没渲染，再等等
+        if (--retriesLeft <= 0) return; // 兜底放弃
         setTimeout(attachObserver, 200);
         return;
       }
