@@ -47,12 +47,14 @@ describe('NodeAugmenter.augment', () => {
     expect(el.getAttribute('data-sv-managed')).toBe('1')
   })
 
-  it('augment is idempotent — calling twice does not re-mark or duplicate', () => {
-    const el = makeNodeEl({ id: 'node_1' })
+  it('augment is idempotent — managed attr unchanged on second call', () => {
+    const el = makeNodeEl({ id: 'node_idem' })
     document.body.appendChild(el)
     aug.augment(el)
+    const firstAttr = el.getAttribute('data-sv-managed')
     aug.augment(el)
-    expect(el.querySelectorAll('[data-sv-managed]').length).toBe(0)
+    expect(el.getAttribute('data-sv-managed')).toBe(firstAttr)
+    expect(el.getAttribute('data-sv-managed')).toBe('1')
   })
 
   it('skips non-input-image node types', () => {

@@ -182,6 +182,8 @@
   function augment(el) {
     if (!isInputImageNode(el)) return;
     if (el.getAttribute(MANAGED_ATTR) === '1') return; // 幂等
+    // NOTE: React 重渲染若替换内部 DOM，marker 仍在但注入的子元素会消失。
+    // Task 8 的 MutationObserver 需检测注入物丢失并清除 MANAGED_ATTR 后重跑 augment。
 
     const nodeId = el.getAttribute('data-id');
     el.setAttribute(MANAGED_ATTR, '1');
