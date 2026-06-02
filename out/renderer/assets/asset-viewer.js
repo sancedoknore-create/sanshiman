@@ -76,8 +76,15 @@
         document.removeEventListener('keydown', escHandler);
         escHandler = null;
       }
-      if (currentOverlay && currentOverlay.parentNode) {
-        currentOverlay.parentNode.removeChild(currentOverlay);
+      if (currentOverlay) {
+        // 显式释放视频，避免 rapid open/close 时浏览器仍在 fetch/decode
+        const video = currentOverlay.querySelector('video');
+        if (video) {
+          try { video.pause(); video.removeAttribute('src'); video.load(); } catch {}
+        }
+        if (currentOverlay.parentNode) {
+          currentOverlay.parentNode.removeChild(currentOverlay);
+        }
       }
       currentOverlay = null;
     }
@@ -121,7 +128,10 @@
       // 点背景关闭
       overlay.addEventListener('click', function () { close(); });
 
-      // ESC 关闭
+      // ESC 关闭。
+      // 注意：document 层 stopPropagation 阻止 window 层（如现有 app lightbox）
+      // 的同事件链监听器，但不会阻止同样挂在 document 上的其他监听器。
+      // 如果未来 NodeAugmenter 也在 document 上挂 ESC 处理，需切到 stopImmediatePropagation。
       escHandler = function (e) {
         if (e.key === 'Escape') {
           e.stopPropagation();

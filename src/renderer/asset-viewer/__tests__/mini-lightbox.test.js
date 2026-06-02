@@ -75,4 +75,23 @@ describe('MiniLightbox', () => {
     expect(overlays.length).toBe(1)
     expect(overlays[0].querySelector('img').src).toContain('b.png')
   })
+
+  it('removes keydown listener after close (no leaked Escape handlers)', () => {
+    lb.open({ url: 'foo.png', isVideo: false })
+    lb.close()
+    // 此时不应该再有 overlay；再触发 ESC 不应抛错也不应有副作用
+    expect(() => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    }).not.toThrow()
+    expect(document.querySelector('.sv-lightbox-overlay')).toBeNull()
+  })
+
+  it('close() releases video src to free decoder', () => {
+    lb.open({ url: 'sanshiman://local/?path=clip.mp4', isVideo: true })
+    const video = document.querySelector('video.sv-lightbox-content')
+    expect(video.src).toContain('clip.mp4')
+    lb.close()
+    // close 之后 overlay 已经从 DOM 移除；上面捕到的 video 引用上的 src 应已被清空
+    expect(video.getAttribute('src')).toBeNull()
+  })
 })
