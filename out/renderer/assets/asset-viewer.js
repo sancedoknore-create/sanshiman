@@ -66,5 +66,78 @@
   window.sanshimanAssetViewer = { version: VERSION };
   window.sanshimanAssetViewer.ViewerStateStore = ViewerStateStore;
 
+  // ============== MiniLightbox ==============
+  const MiniLightbox = (function () {
+    let currentOverlay = null;
+    let escHandler = null;
+
+    function close() {
+      if (escHandler) {
+        document.removeEventListener('keydown', escHandler);
+        escHandler = null;
+      }
+      if (currentOverlay && currentOverlay.parentNode) {
+        currentOverlay.parentNode.removeChild(currentOverlay);
+      }
+      currentOverlay = null;
+    }
+
+    function open({ url, isVideo }) {
+      // 已有 overlay 先关掉
+      close();
+
+      const overlay = document.createElement('div');
+      overlay.className = 'sv-lightbox-overlay';
+      overlay.tabIndex = -1;
+
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'sv-lightbox-close';
+      closeBtn.textContent = '✕';
+      closeBtn.setAttribute('aria-label', '关闭');
+      closeBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        close();
+      });
+
+      let content;
+      if (isVideo) {
+        content = document.createElement('video');
+        content.controls = true;
+        content.autoplay = true;
+        content.muted = true;
+        content.playsInline = true;
+      } else {
+        content = document.createElement('img');
+        content.alt = '预览';
+      }
+      content.className = 'sv-lightbox-content';
+      content.src = url;
+      // 点内容不关闭，只点背景才关闭
+      content.addEventListener('click', function (e) { e.stopPropagation(); });
+
+      overlay.appendChild(closeBtn);
+      overlay.appendChild(content);
+
+      // 点背景关闭
+      overlay.addEventListener('click', function () { close(); });
+
+      // ESC 关闭
+      escHandler = function (e) {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          close();
+        }
+      };
+      document.addEventListener('keydown', escHandler);
+
+      document.body.appendChild(overlay);
+      currentOverlay = overlay;
+    }
+
+    return { open, close };
+  })();
+
+  window.sanshimanAssetViewer.MiniLightbox = MiniLightbox;
+
   console.log('[asset-viewer] loaded v' + VERSION);
 })();
