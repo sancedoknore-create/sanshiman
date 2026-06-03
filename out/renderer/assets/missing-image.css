@@ -1,0 +1,55 @@
+/* 失效图占位 — 当 <img> 加载失败时由 missing-image.js 给元素加上 .img-missing 类 */
+img.img-missing {
+  /* 隐藏破图 icon，用容器风格的占位代替 */
+  visibility: visible !important;
+  background:
+    linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%),
+    repeating-linear-gradient(
+      45deg,
+      rgba(120, 140, 200, 0.06) 0,
+      rgba(120, 140, 200, 0.06) 6px,
+      transparent 6px,
+      transparent 12px
+    ),
+    #15182040 !important;
+  border: 1px dashed rgba(140, 170, 220, 0.35) !important;
+  border-radius: 4px !important;
+  /* 关键：盖掉浏览器默认的 broken-image icon —— 它是 ::before 渲染的，
+     用 color:transparent 把 alt 文字也藏起来，再用我们自己的 ::after 显示提示 */
+  color: transparent !important;
+  font-size: 0 !important;
+  position: relative !important;
+  object-fit: cover !important;
+}
+
+/* 用 ::after 是没用的（img 是替换元素，没有伪元素），
+   所以 missing-image.js 会把失效的 <img> 包一层 <span class="img-missing-wrap"> 来承载提示 */
+.img-missing-wrap {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+}
+.img-missing-wrap::after {
+  content: '⊘ 文件丢失';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: rgba(180, 200, 230, 0.55);
+  text-shadow: 0 0 6px rgba(120, 150, 200, 0.3);
+  pointer-events: none;
+  background:
+    linear-gradient(135deg, rgba(40, 30, 80, 0.25) 0%, rgba(20, 30, 60, 0.4) 100%);
+  border: 1px dashed rgba(140, 170, 220, 0.3);
+  border-radius: inherit;
+}
+
+/* 小尺寸缩略图（< 80px）只显示符号不显示文字 */
+.img-missing-wrap.img-missing-small::after {
+  content: '⊘';
+  font-size: 18px;
+}

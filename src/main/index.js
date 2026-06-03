@@ -1,773 +1,4 @@
 "use strict";
-const electron$1 = require("electron");
-const path$1 = require("path");
-const fs$1 = require("fs");
-const crypto = require("crypto");
-const Database = require("better-sqlite3");
-let db = null;
-try {
-  let runMigrations = function() {
-    if (currentVersion < 1) {
-      const migrateColumn = (table, column, type, defaultVal) => {
-        const cols = db.prepare(`PRAGMA table_info(${table})`).all();
-        if (!cols.find((c) => c.name === column)) {
-          const def = defaultVal !== void 0 ? ` DEFAULT ${defaultVal}` : "";
-          db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}${def}`);
-          /* @__PURE__ */ console.log(`[Database] 迁移 v1: ${table} 添加列 ${column}`);
-        }
-      };
-      const tx = db.transaction(() => {
-        migrateColumn("nodes", "project_id", "TEXT");
-        migrateColumn("nodes", "settings", "TEXT");
-        migrateColumn("nodes", "data", "TEXT");
-        migrateColumn("nodes", "frames", "TEXT");
-        migrateColumn("nodes", "selected_keyframes", "TEXT");
-        migrateColumn("nodes", "video_meta", "TEXT");
-        migrateColumn("nodes", "width", "REAL");
-        migrateColumn("nodes", "height", "REAL");
-        migrateColumn("nodes", "created_at", "INTEGER");
-        migrateColumn("connections", "project_id", "TEXT");
-        migrateColumn("connections", "source_handle", "TEXT", "'default'");
-        migrateColumn("connections", "target_handle", "TEXT", "'default'");
-        migrateColumn("connections", "input_type", "TEXT", "'default'");
-        migrateColumn("history", "project_id", "TEXT");
-        migrateColumn("history", "source_node_id", "TEXT");
-        migrateColumn("history", "duration_ms", "INTEGER");
-        migrateColumn("history", "error_msg", "TEXT");
-        migrateColumn("history", "original_payload", "TEXT");
-        migrateColumn("history", "metadata", "TEXT");
-      });
-      tx();
-    }
-    if (currentVersion < DB_VERSION) {
-      db.pragma(`user_version = ${DB_VERSION}`);
-      /* @__PURE__ */ console.log(`[Database] 版本迁移: ${currentVersion} → ${DB_VERSION}`);
-    }
-  };
-  const dbPath = !electron$1.app.isPackaged ? path$1.join(process.cwd(), "canvas_data.db") : path$1.join(electron$1.app.getPath("userData"), "canvas_data.db");
-  db = new Database(dbPath);
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
-  db.exec(`
-    -- 项目表
-    CREATE TABLE IF NOT EXISTS projects (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL DEFAULT '未命名项目',
-      created_at INTEGER,
-      updated_at INTEGER
-    );
-
-    -- 节点表（完整属性）
-    CREATE TABLE IF NOT EXISTS nodes (
-      id TEXT PRIMARY KEY,
-      project_id TEXT,
-      type TEXT NOT NULL,
-      x REAL DEFAULT 0,
-      y REAL DEFAULT 0,
-      width REAL,
-      height REAL,
-      content TEXT,
-      settings TEXT,
-      data TEXT,
-      frames TEXT,
-      selected_keyframes TEXT,
-      video_meta TEXT,
-      created_at INTEGER,
-      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-    );
-
-    -- 连接表
-    CREATE TABLE IF NOT EXISTS connections (
-      id TEXT PRIMARY KEY,
-      project_id TEXT,
-      source TEXT,
-      target TEXT,
-      source_handle TEXT DEFAULT 'default',
-      target_handle TEXT DEFAULT 'default',
-      input_type TEXT DEFAULT 'default',
-      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-    );
-
-    -- 生成历史表
-    CREATE TABLE IF NOT EXISTS history (
-      id TEXT PRIMARY KEY,
-      project_id TEXT,
-      type TEXT,
-      url TEXT,
-      prompt TEXT,
-      status TEXT,
-      model_id TEXT,
-      model_name TEXT,
-      source_node_id TEXT,
-      duration_ms INTEGER,
-      error_msg TEXT,
-      original_payload TEXT,
-      created_at INTEGER,
-      metadata TEXT
-    );
-
-    -- 资源缓存表
-    CREATE TABLE IF NOT EXISTS assets (
-      id TEXT PRIMARY KEY,
-      file_path TEXT,
-      ai_prompt TEXT,
-      type TEXT,
-      created_at INTEGER
-    );
-
-    -- 键值设置表（用于迁移 localStorage）
-    CREATE TABLE IF NOT EXISTS settings (
-      key TEXT PRIMARY KEY,
-      value TEXT,
-      updated_at INTEGER
-    );
-  `);
-  const DB_VERSION = 1;
-  const currentVersion = db.pragma("user_version", { simple: true });
-  runMigrations();
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_nodes_project ON nodes(project_id);
-    CREATE INDEX IF NOT EXISTS idx_connections_project ON connections(project_id);
-    CREATE INDEX IF NOT EXISTS idx_connections_source ON connections(source);
-    CREATE INDEX IF NOT EXISTS idx_connections_target ON connections(target);
-    CREATE INDEX IF NOT EXISTS idx_history_project ON history(project_id);
-    CREATE INDEX IF NOT EXISTS idx_history_status ON history(status);
-    CREATE INDEX IF NOT EXISTS idx_history_source_node ON history(source_node_id);
-  `);
-  const _walTimer = setInterval(
-    () => {
-      try {
-        db.pragma("wal_checkpoint(PASSIVE)");
-      } catch (e) {
-        console.warn("[Database] WAL checkpoint 失败:", e.message);
-      }
-    },
-    5 * 60 * 1e3
-  );
-  electron$1.app.on("before-quit", () => {
-    try {
-      clearInterval(_walTimer);
-    } catch {
-    }
-    try {
-      db.pragma("wal_checkpoint(TRUNCATE)");
-    } catch (e) {
-      console.warn("[Database] before-quit checkpoint 失败:", e.message);
-    }
-    try {
-      db.close();
-    } catch (e) {
-      console.warn("[Database] before-quit close 失败:", e.message);
-    }
-  });
-  /* @__PURE__ */ console.log(`SQLite Database initialized at: ${dbPath} (version: ${DB_VERSION})`);
-} catch (err) {
-  console.error("[Database] better-sqlite3 加载失败，使用内存模式:", err.message);
-  global.__DB_MEMORY_MODE__ = true;
-  global.__DB_ERROR_MSG__ = err.message;
-  try {
-    db = new Database(":memory:");
-    db.pragma("journal_mode = WAL");
-    db.pragma("foreign_keys = ON");
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS projects (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL DEFAULT '未命名项目',
-        created_at INTEGER,
-        updated_at INTEGER
-      );
-      CREATE TABLE IF NOT EXISTS nodes (
-        id TEXT PRIMARY KEY,
-        project_id TEXT,
-        type TEXT NOT NULL,
-        x REAL DEFAULT 0, y REAL DEFAULT 0,
-        width REAL, height REAL,
-        content TEXT, settings TEXT, data TEXT,
-        frames TEXT, selected_keyframes TEXT, video_meta TEXT,
-        created_at INTEGER
-      );
-      CREATE TABLE IF NOT EXISTS connections (
-        id TEXT PRIMARY KEY,
-        project_id TEXT,
-        source TEXT, target TEXT,
-        source_handle TEXT DEFAULT 'default',
-        target_handle TEXT DEFAULT 'default',
-        input_type TEXT DEFAULT 'default'
-      );
-      CREATE TABLE IF NOT EXISTS history (
-        id TEXT PRIMARY KEY,
-        project_id TEXT,
-        type TEXT, url TEXT, prompt TEXT, status TEXT,
-        model_id TEXT, model_name TEXT, source_node_id TEXT,
-        duration_ms INTEGER, error_msg TEXT,
-        original_payload TEXT, created_at INTEGER, metadata TEXT
-      );
-      CREATE TABLE IF NOT EXISTS assets (
-        id TEXT PRIMARY KEY,
-        file_path TEXT, ai_prompt TEXT, type TEXT, created_at INTEGER
-      );
-      CREATE TABLE IF NOT EXISTS settings (
-        key TEXT PRIMARY KEY,
-        value TEXT,
-        updated_at INTEGER
-      );
-    `);
-    /* @__PURE__ */ console.log("SQLite Database initialized in memory mode (fallback)");
-  } catch (err2) {
-    console.error("[Database] better-sqlite3 完全不可用，数据库功能将被禁用:", err2.message);
-  }
-}
-const _stmts = db ? {
-  getAllProjects: db.prepare("SELECT * FROM projects ORDER BY updated_at DESC"),
-  getProject: db.prepare("SELECT * FROM projects WHERE id = ?"),
-  saveProject: db.prepare("INSERT INTO projects (id, name, created_at, updated_at) VALUES (@id, @name, @created_at, @updated_at) ON CONFLICT(id) DO UPDATE SET name=excluded.name, updated_at=excluded.updated_at"),
-  deleteProject: db.prepare("DELETE FROM projects WHERE id = ?"),
-  getNodesByProject: db.prepare("SELECT * FROM nodes WHERE project_id = ?"),
-  saveNode: db.prepare("INSERT INTO nodes (id, project_id, type, x, y, width, height, content, settings, data, frames, selected_keyframes, video_meta, created_at) VALUES (@id, @project_id, @type, @x, @y, @width, @height, @content, @settings, @data, @frames, @selected_keyframes, @video_meta, @created_at) ON CONFLICT(id) DO UPDATE SET project_id=excluded.project_id, type=excluded.type, x=excluded.x, y=excluded.y, width=excluded.width, height=excluded.height, content=excluded.content, settings=excluded.settings, data=excluded.data, frames=excluded.frames, selected_keyframes=excluded.selected_keyframes, video_meta=excluded.video_meta"),
-  deleteNode: db.prepare("DELETE FROM nodes WHERE id = ?"),
-  deleteNodesByProject: db.prepare("DELETE FROM nodes WHERE project_id = ?"),
-  getConnectionsByProject: db.prepare("SELECT * FROM connections WHERE project_id = ?"),
-  saveConnection: db.prepare("INSERT INTO connections (id, project_id, source, target, source_handle, target_handle, input_type) VALUES (@id, @project_id, @source, @target, @source_handle, @target_handle, @input_type) ON CONFLICT(id) DO UPDATE SET project_id=excluded.project_id, source=excluded.source, target=excluded.target, source_handle=excluded.source_handle, target_handle=excluded.target_handle, input_type=excluded.input_type"),
-  deleteConnection: db.prepare("DELETE FROM connections WHERE id = ?"),
-  deleteConnectionsByProject: db.prepare("DELETE FROM connections WHERE project_id = ?"),
-  getSetting: db.prepare("SELECT value FROM settings WHERE key = ?"),
-  setSetting: db.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (@key, @value, @updated_at)"),
-  deleteSetting: db.prepare("DELETE FROM settings WHERE key = ?"),
-  getAllSettings: db.prepare("SELECT key, value FROM settings"),
-  setSettingBatch: db.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (@key, @value, @updated_at)")
-} : null;
-function getAllProjects() {
-  if (!db) return [];
-  return _stmts.getAllProjects.all();
-}
-function getProject(id) {
-  if (!db) return null;
-  return _stmts.getProject.get(id);
-}
-function saveProject(project) {
-  if (!db) return { changes: 0 };
-  return _stmts.saveProject.run({
-    id: project.id,
-    name: project.name || "未命名项目",
-    created_at: project.created_at || Date.now(),
-    updated_at: project.updated_at || Date.now()
-  });
-}
-function deleteProject(id) {
-  if (!db) return { changes: 0 };
-  return _stmts.deleteProject.run(id);
-}
-function getNodesByProject(projectId) {
-  if (!db) return [];
-  const rows = _stmts.getNodesByProject.all(projectId);
-  return rows.map(deserializeNode);
-}
-function saveNode(node, projectId) {
-  if (!db) return { changes: 0 };
-  return _stmts.saveNode.run(serializeNode(node, projectId));
-}
-function saveNodesBatch(nodes, projectId) {
-  if (!db) return { changes: 0 };
-  const transaction = db.transaction((items) => {
-    for (const node of items) {
-      _stmts.saveNode.run(serializeNode(node, projectId));
-    }
-  });
-  transaction(nodes);
-  return { changes: nodes.length };
-}
-function deleteNode(id) {
-  if (!db) return { changes: 0 };
-  return _stmts.deleteNode.run(id);
-}
-function deleteNodesByProject(projectId) {
-  if (!db) return { changes: 0 };
-  return _stmts.deleteNodesByProject.run(projectId);
-}
-function getConnectionsByProject(projectId) {
-  if (!db) return [];
-  return _stmts.getConnectionsByProject.all(projectId);
-}
-function saveConnection(conn, projectId) {
-  if (!db) return { changes: 0 };
-  return _stmts.saveConnection.run({
-    id: conn.id,
-    project_id: projectId,
-    source: conn.source || conn.from || "",
-    target: conn.target || conn.to || "",
-    source_handle: conn.sourceHandle || conn.source_handle || "default",
-    target_handle: conn.targetHandle || conn.target_handle || "default",
-    input_type: conn.inputType || conn.input_type || "default"
-  });
-}
-function saveConnectionsBatch(connections, projectId) {
-  if (!db) return { changes: 0 };
-  const transaction = db.transaction((items) => {
-    for (const conn of items) {
-      _stmts.saveConnection.run({
-        id: conn.id,
-        project_id: projectId,
-        source: conn.source || conn.from || "",
-        target: conn.target || conn.to || "",
-        source_handle: conn.sourceHandle || conn.source_handle || "default",
-        target_handle: conn.targetHandle || conn.target_handle || "default",
-        input_type: conn.inputType || conn.input_type || "default"
-      });
-    }
-  });
-  transaction(connections);
-  return { changes: connections.length };
-}
-function deleteConnection(id) {
-  if (!db) return { changes: 0 };
-  return _stmts.deleteConnection.run(id);
-}
-function deleteConnectionsByProject(projectId) {
-  if (!db) return { changes: 0 };
-  return _stmts.deleteConnectionsByProject.run(projectId);
-}
-function getHistoryByProject(projectId, limit = 200) {
-  if (!db) return [];
-  const rows = db.prepare("SELECT * FROM history WHERE project_id = ? ORDER BY created_at DESC LIMIT ?").all(projectId, limit);
-  return rows.map(deserializeHistory);
-}
-function getAllHistory(limit = 500) {
-  if (!db) return [];
-  const rows = db.prepare("SELECT * FROM history ORDER BY created_at DESC LIMIT ?").all(limit);
-  return rows.map(deserializeHistory);
-}
-function saveHistoryItem(item, projectId) {
-  if (!db) return { changes: 0 };
-  const stmt = db.prepare(`
-    INSERT OR REPLACE INTO history (id, project_id, type, url, prompt, status, model_id, model_name, source_node_id, duration_ms, error_msg, original_payload, created_at, metadata)
-    VALUES (@id, @project_id, @type, @url, @prompt, @status, @model_id, @model_name, @source_node_id, @duration_ms, @error_msg, @original_payload, @created_at, @metadata)
-  `);
-  return stmt.run(serializeHistory(item, projectId));
-}
-function saveHistoryBatch(items, projectId) {
-  if (!db) return { changes: 0 };
-  const stmt = db.prepare(`
-    INSERT OR REPLACE INTO history (id, project_id, type, url, prompt, status, model_id, model_name, source_node_id, duration_ms, error_msg, original_payload, created_at, metadata)
-    VALUES (@id, @project_id, @type, @url, @prompt, @status, @model_id, @model_name, @source_node_id, @duration_ms, @error_msg, @original_payload, @created_at, @metadata)
-  `);
-  const transaction = db.transaction((rows) => {
-    for (const item of rows) {
-      stmt.run(serializeHistory(item, projectId));
-    }
-  });
-  transaction(items);
-  return { changes: items.length };
-}
-function deleteHistoryItem(id) {
-  if (!db) return { changes: 0 };
-  return db.prepare("DELETE FROM history WHERE id = ?").run(id);
-}
-function clearAllHistory() {
-  if (!db) return { changes: 0 };
-  return db.prepare("DELETE FROM history").run();
-}
-function serializeNode(node, projectId) {
-  const pos = node.position || { x: node.x || 0, y: node.y || 0 };
-  return {
-    id: node.id,
-    project_id: projectId,
-    type: node.type || "unknown",
-    x: pos.x,
-    y: pos.y,
-    width: node.width ?? null,
-    height: node.height ?? null,
-    content: node.content || null,
-    settings: node.settings ? JSON.stringify(node.settings) : null,
-    data: node.data ? JSON.stringify(node.data) : null,
-    frames: node.frames ? JSON.stringify(node.frames) : null,
-    selected_keyframes: node.selectedKeyframes ? JSON.stringify(node.selectedKeyframes) : null,
-    video_meta: node.videoMeta ? JSON.stringify(node.videoMeta) : null,
-    created_at: node.created_at || Date.now()
-  };
-}
-function deserializeNode(row) {
-  return {
-    id: row.id,
-    type: row.type,
-    position: { x: row.x || 0, y: row.y || 0 },
-    x: row.x || 0,
-    y: row.y || 0,
-    width: row.width,
-    height: row.height,
-    content: row.content,
-    settings: safeJsonParse(row.settings),
-    data: safeJsonParse(row.data) || {},
-    frames: safeJsonParse(row.frames),
-    selectedKeyframes: safeJsonParse(row.selected_keyframes),
-    videoMeta: safeJsonParse(row.video_meta)
-  };
-}
-function serializeHistory(item, projectId) {
-  return {
-    id: item.id,
-    project_id: projectId || null,
-    type: item.type || null,
-    url: item.url || null,
-    prompt: item.prompt || null,
-    status: item.status || null,
-    model_id: item.apiConfig?.modelId || item.model_id || null,
-    model_name: item.apiConfig?.modelName || item.model_name || null,
-    source_node_id: item.sourceNodeId || item.source_node_id || null,
-    duration_ms: item.durationMs || item.duration_ms || null,
-    error_msg: item.errorMsg || item.error_msg || null,
-    original_payload: item.originalPayload ? JSON.stringify(item.originalPayload) : null,
-    created_at: item.startTime || item.created_at || Date.now(),
-    metadata: JSON.stringify({
-      ratio: item.ratio,
-      mjImages: item.mjImages,
-      mjOriginalUrl: item.mjOriginalUrl,
-      mjRatio: item.mjRatio,
-      selectedMjImageIndex: item.selectedMjImageIndex,
-      width: item.width,
-      height: item.height,
-      resultUrls: item.resultUrls,
-      apiConfig: item.apiConfig
-    })
-  };
-}
-function deserializeHistory(row) {
-  const meta = safeJsonParse(row.metadata) || {};
-  return {
-    id: row.id,
-    type: row.type,
-    url: row.url,
-    prompt: row.prompt,
-    status: row.status,
-    sourceNodeId: row.source_node_id,
-    durationMs: row.duration_ms,
-    errorMsg: row.error_msg,
-    originalPayload: safeJsonParse(row.original_payload),
-    startTime: row.created_at,
-    ratio: meta.ratio,
-    mjImages: meta.mjImages,
-    mjOriginalUrl: meta.mjOriginalUrl,
-    mjRatio: meta.mjRatio,
-    selectedMjImageIndex: meta.selectedMjImageIndex,
-    width: meta.width,
-    height: meta.height,
-    resultUrls: meta.resultUrls,
-    apiConfig: meta.apiConfig || { modelId: row.model_id, modelName: row.model_name }
-  };
-}
-function safeJsonParse(str) {
-  if (!str) return null;
-  try {
-    return JSON.parse(str);
-  } catch {
-    return null;
-  }
-}
-function getSetting(key) {
-  if (!db) return null;
-  const row = _stmts.getSetting.get(key);
-  return row ? row.value : null;
-}
-function setSetting(key, value) {
-  if (!db) return { changes: 0 };
-  return _stmts.setSetting.run({ key, value: String(value), updated_at: Date.now() });
-}
-function deleteSetting(key) {
-  if (!db) return { changes: 0 };
-  return _stmts.deleteSetting.run(key);
-}
-function getAllSettings() {
-  if (!db) return {};
-  const rows = _stmts.getAllSettings.all();
-  const result = {};
-  for (const row of rows) {
-    result[row.key] = row.value;
-  }
-  return result;
-}
-function setSettingsBatch(entries) {
-  if (!db) return { changes: 0 };
-  const now = Date.now();
-  const transaction = db.transaction((items) => {
-    for (const { key, value } of items) {
-      _stmts.setSettingBatch.run({ key, value: String(value), updated_at: now });
-    }
-  });
-  transaction(entries);
-  return { changes: entries.length };
-}
-const LOG_DIR = (() => {
-  const d = path$1.join(electron$1.app.getPath("userData"), "logs");
-  if (!fs$1.existsSync(d)) fs$1.mkdirSync(d, { recursive: true });
-  return d;
-})();
-const LOG_MAX_LINE = 8192;
-const LOG_MAX_FILE = 5 * 1024 * 1024;
-const _logBufs = { main: [], renderer: [] };
-let _logBufSizes = { main: 0, renderer: 0 };
-let _logFlushing = false;
-const _origConsole = {
-  log: console.log.bind(console),
-  warn: console.warn.bind(console),
-  error: console.error.bind(console),
-  debug: console.debug.bind(console),
-  info: console.info.bind(console)
-};
-let _inOverride = false;
-function _formatLog(kind, args) {
-  const ts = (/* @__PURE__ */ new Date()).toISOString();
-  const line = args.map((a) => {
-    if (a instanceof Error) return `${a.name}: ${a.message}
-${a.stack || ""}`;
-    if (typeof a === "string") return a;
-    try {
-      return JSON.stringify(a);
-    } catch {
-      return String(a);
-    }
-  }).join(" ");
-  return `${ts} [${kind}] ${line}
-`.slice(0, LOG_MAX_LINE);
-}
-function _appendLog(bufName, entry) {
-  const arr = _logBufs[bufName];
-  if (!arr) return;
-  if (arr.length >= 2e4) {
-    const removed = arr.shift();
-    _logBufSizes[bufName] -= (removed || "").length;
-  }
-  arr.push(entry);
-  _logBufSizes[bufName] += entry.length;
-  if (_logBufSizes[bufName] >= 65536) _flushLog(bufName);
-}
-function _rotateLog(kind) {
-  const fp = path$1.join(LOG_DIR, `${kind}.log`);
-  try {
-    if (fs$1.existsSync(fp) && fs$1.statSync(fp).size >= LOG_MAX_FILE) {
-      const bak = fp + ".1";
-      try {
-        if (fs$1.existsSync(bak)) fs$1.unlinkSync(bak);
-      } catch (e) {
-        _origConsole.warn("[logger] rotate unlink failed:", e.message);
-      }
-      fs$1.renameSync(fp, bak);
-    }
-  } catch (e) {
-    _origConsole.warn("[logger] rotate failed:", e.message);
-  }
-  return fp;
-}
-function _flushLog(bufName) {
-  const arr = _logBufs[bufName];
-  if (!arr || arr.length === 0) return Promise.resolve();
-  const batch = arr.splice(0);
-  _logBufSizes[bufName] = 0;
-  const fp = _rotateLog(bufName);
-  return fs$1.promises.appendFile(fp, batch.join(""), "utf-8").catch((e) => {
-    _origConsole.error("[logger] appendFile failed:", e && e.message ? e.message : e);
-  });
-}
-async function _flushAllLogs() {
-  if (_logFlushing) return;
-  _logFlushing = true;
-  try {
-    await Promise.all([_flushLog("main"), _flushLog("renderer")]);
-  } finally {
-    _logFlushing = false;
-  }
-}
-const _flushTimer = setInterval(() => {
-  if (!_logFlushing) {
-    _flushLog("main");
-    _flushLog("renderer");
-  }
-}, 200);
-["log", "warn", "error", "debug", "info"].forEach((lvl) => {
-  const orig = _origConsole[lvl] || _origConsole.log;
-  console[lvl] = (...args) => {
-    if (_inOverride) {
-      orig(...args);
-      return;
-    }
-    _inOverride = true;
-    try {
-      try {
-        _appendLog("main", _formatLog(lvl.toUpperCase(), args));
-      } catch (e) {
-        _origConsole.error("[logger] _appendLog failed:", e && e.message ? e.message : e);
-      }
-      orig(...args);
-    } finally {
-      _inOverride = false;
-    }
-  };
-});
-const DEFAULT_FILE_EXT_WHITELIST = [
-  ".jpg",
-  ".jpeg",
-  ".png",
-  ".webp",
-  ".gif",
-  ".bmp",
-  ".mp4",
-  ".webm",
-  ".mov"
-];
-const PRIVATE_IPV4_RE = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|0\.0\.0\.0)/;
-const LOOPBACK_HOSTS = /* @__PURE__ */ new Set(["localhost", "::1", "[::1]"]);
-function assertSafeRelativePath(rel, root) {
-  if (typeof rel !== "string" || rel.length === 0) {
-    throw new Error("invalid path: must be non-empty string");
-  }
-  if (rel.includes("\0")) {
-    throw new Error("invalid path: null byte");
-  }
-  if (path$1.isAbsolute(rel) || /^[a-zA-Z]:[\\/]/.test(rel)) {
-    throw new Error("invalid path: absolute path not allowed");
-  }
-  const absRoot = path$1.resolve(root);
-  const joined = path$1.resolve(absRoot, rel);
-  const rootWithSep = absRoot.endsWith(path$1.sep) ? absRoot : absRoot + path$1.sep;
-  if (joined !== absRoot && !joined.startsWith(rootWithSep)) {
-    throw new Error(`path traversal: ${rel} resolves outside allowed root ${absRoot}`);
-  }
-  return joined;
-}
-function assertSafeAbsolutePath(abs, allowedRoots) {
-  if (typeof abs !== "string" || abs.length === 0) {
-    throw new Error("invalid path: must be non-empty string");
-  }
-  if (abs.includes("\0")) {
-    throw new Error("invalid path: null byte");
-  }
-  if (!path$1.isAbsolute(abs)) {
-    throw new Error("invalid path: not absolute, outside allowed roots");
-  }
-  const resolved = path$1.resolve(abs);
-  for (const root of allowedRoots) {
-    const r = path$1.resolve(root);
-    const rWithSep = r.endsWith(path$1.sep) ? r : r + path$1.sep;
-    if (resolved === r || resolved.startsWith(rWithSep)) {
-      return resolved;
-    }
-  }
-  throw new Error(`path is outside allowed roots: ${resolved}`);
-}
-function assertSafeDownloadUrl(input, opts = {}) {
-  const { allowHttp = false, allowPrivate = false } = opts;
-  if (typeof input !== "string" || input.length === 0) {
-    throw new Error("invalid url: must be non-empty string");
-  }
-  let u;
-  try {
-    u = new URL(input);
-  } catch {
-    throw new Error(`invalid url: ${input}`);
-  }
-  const proto = u.protocol.toLowerCase();
-  if (proto === "https:" || allowHttp && proto === "http:") ;
-  else {
-    throw new Error(`invalid url: protocol ${proto} not allowed`);
-  }
-  if (!allowPrivate) {
-    const host = u.hostname.toLowerCase();
-    const stripped = host.startsWith("[") && host.endsWith("]") ? host.slice(1, -1) : host;
-    if (LOOPBACK_HOSTS.has(host) || LOOPBACK_HOSTS.has(stripped) || PRIVATE_IPV4_RE.test(host)) {
-      throw new Error(`invalid url: private/loopback host blocked (SSRF): ${host}`);
-    }
-  }
-  return input;
-}
-function assertSafeFileExt(ext, whitelist = DEFAULT_FILE_EXT_WHITELIST) {
-  if (typeof ext !== "string" || ext.length === 0) {
-    throw new Error("invalid extension: must be non-empty string");
-  }
-  const norm = (ext.startsWith(".") ? ext : "." + ext).toLowerCase();
-  if (norm.lastIndexOf(".") !== 0) {
-    throw new Error(`invalid extension: double extension not allowed: ${ext}`);
-  }
-  if (!whitelist.includes(norm)) {
-    throw new Error(`invalid extension: ${norm} not in whitelist`);
-  }
-  return norm;
-}
-function encodePowershellCommand(script) {
-  if (typeof script !== "string") {
-    throw new Error("script must be a string");
-  }
-  const b64 = Buffer.from(script, "utf16le").toString("base64");
-  return {
-    exe: "powershell.exe",
-    args: ["-NoProfile", "-NonInteractive", "-STA", "-EncodedCommand", b64]
-  };
-}
-const fsp = fs$1.promises;
-const THUMB_SIZE = 160;
-const THUMB_QUALITY = "good";
-const IMAGE_EXTS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"];
-let thumbCacheDir = null;
-async function ensureCacheDir() {
-  if (!thumbCacheDir) {
-    thumbCacheDir = path$1.join(electron$1.app.getPath("userData"), "thumbnail_cache");
-  }
-  await fsp.mkdir(thumbCacheDir, { recursive: true });
-  return thumbCacheDir;
-}
-async function getThumbPath(originalPath, st) {
-  const stat = st || await fsp.stat(originalPath);
-  const key = `${originalPath}|${stat.mtimeMs}|${stat.size}`;
-  const hash = crypto.createHash("md5").update(key).digest("hex");
-  const dir = await ensureCacheDir();
-  return path$1.join(dir, `${hash}.jpg`);
-}
-async function _exists(p) {
-  try {
-    await fsp.access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
-async function generateThumbnail(originalPath, size = THUMB_SIZE) {
-  try {
-    if (!originalPath) return { success: false, error: "文件不存在" };
-    let stat;
-    try {
-      stat = await fsp.stat(originalPath);
-    } catch {
-      return { success: false, error: "文件不存在" };
-    }
-    const ext = path$1.extname(originalPath).toLowerCase();
-    if (!IMAGE_EXTS.includes(ext)) {
-      return { success: false, error: "不是图片文件" };
-    }
-    const thumbPath = await getThumbPath(originalPath, stat);
-    if (await _exists(thumbPath)) {
-      return { success: true, thumbPath };
-    }
-    const img = electron$1.nativeImage.createFromPath(originalPath);
-    if (img.isEmpty()) {
-      return { success: false, error: "无法读取图片" };
-    }
-    const { width, height } = img.getSize();
-    let newW, newH;
-    if (width <= size && height <= size) {
-      return { success: true, thumbPath: originalPath };
-    } else if (width < height) {
-      newW = size;
-      newH = Math.round(height / width * size);
-    } else {
-      newH = size;
-      newW = Math.round(width / height * size);
-    }
-    const resized = img.resize({ width: newW, height: newH, quality: THUMB_QUALITY });
-    const jpegBuffer = resized.toJPEG(75);
-    await fsp.writeFile(thumbPath, jpegBuffer);
-    return { success: true, thumbPath };
-  } catch (err) {
-    console.error("[ThumbnailService] Error:", err);
-    return { success: false, error: err.message };
-  }
-}
 const electron = require("electron");
 const path = require("path");
 const fs = require("fs");
@@ -775,9 +6,25 @@ const url = require("url");
 const utils = require("@electron-toolkit/utils");
 const events = require("events");
 const os = require("os");
-require("crypto");
+const crypto = require("crypto");
 const { autoUpdater } = require("electron-updater");
+import {
+  db as db$1,
+  getAllProjects, getProject, saveProject, deleteProject,
+  getNodesByProject, saveNode, saveNodesBatch, deleteNode, deleteNodesByProject,
+  getConnectionsByProject, saveConnection, saveConnectionsBatch, deleteConnection, deleteConnectionsByProject,
+  getHistoryByProject, getAllHistory, saveHistoryItem, saveHistoryBatch, deleteHistoryItem, clearAllHistory,
+  getSetting, setSetting, deleteSetting, getAllSettings, setSettingsBatch,
+} from "./db.js";
 let sanshimanAllowedRoots = /* @__PURE__ */ new Set();
+import { LOG_DIR, _appendLog, _formatLog, _flushAllLogs, _origConsole, _flushTimer } from "./logger.js";
+import {
+  assertSafeRelativePath,
+  assertSafeAbsolutePath,
+  assertSafeDownloadUrl,
+  assertSafeFileExt,
+  encodePowershellCommand,
+} from "./security.js";
 const icon = path.join(__dirname, "../../resources/icon.ico");
 class TaskExecutor {
   static DEBUG = process.env.NODE_ENV === "development" || process.env.DEBUG === "1";
@@ -794,22 +41,14 @@ class TaskExecutor {
     for (const secret of this._secrets) {
       if (secret.length >= 4) {
         const escaped = secret.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        try {
-          out = out.replaceAll(escaped, "[redacted]");
-        } catch {
-          out = out.split(escaped).join("[redacted]");
-        }
+        try { out = out.replaceAll(escaped, "[redacted]"); } catch { out = out.split(escaped).join("[redacted]"); }
       }
     }
     return out;
   }
-  static debugLog(...args) {
-    if (TaskExecutor.DEBUG) console.log(...args.map((a) => TaskExecutor._mask(a)));
-  }
-  static debugWarn(...args) {
-    if (TaskExecutor.DEBUG) console.warn(...args.map((a) => TaskExecutor._mask(a)));
-  }
-  static async fetchWithTimeout(url2, options = {}, timeoutMs = 3e4) {
+  static debugLog(...args) { if (TaskExecutor.DEBUG) console.log(...args.map((a) => TaskExecutor._mask(a))); }
+  static debugWarn(...args) { if (TaskExecutor.DEBUG) console.warn(...args.map((a) => TaskExecutor._mask(a))); }
+  static async fetchWithTimeout(url, options = {}, timeoutMs = 30000) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(new Error("Request timeout")), timeoutMs);
     try {
@@ -817,7 +56,7 @@ class TaskExecutor {
       if (existingSignal) {
         existingSignal.addEventListener("abort", () => controller.abort(existingSignal.reason));
       }
-      return await fetch(url2, { ...options, signal: controller.signal });
+      return await fetch(url, { ...options, signal: controller.signal });
     } finally {
       clearTimeout(timeoutId);
     }
@@ -825,7 +64,7 @@ class TaskExecutor {
   static MAX_BASE64_FILE_SIZE = 20 * 1024 * 1024;
   static MAX_BASE64_BODY_SIZE = 5 * 1024 * 1024;
   static MAX_VIDEO_POLL_ATTEMPTS = 300;
-  static VIDEO_POLL_INTERVAL = 3e4;
+  static VIDEO_POLL_INTERVAL = 30000;
   static MAX_IMAGE_POLL_ATTEMPTS = 120;
   static MAX_NETWORK_ERRORS = 5;
   static MAX_COMPLETED_TASKS = 50;
@@ -834,7 +73,7 @@ class TaskExecutor {
   static THUMBNAIL_QUALITY = "good";
   static JPEG_QUALITY = 75;
   static DEFAULT_JPG_QUALITY = 95;
-  static WAL_CHECKPOINT_INTERVAL = 5 * 60 * 1e3;
+  static WAL_CHECKPOINT_INTERVAL = 5 * 60 * 1000;
   static MAX_RENDERER_CRASHES = 3;
   static TASK_QUEUE_CONCURRENCY = 3;
   static resolveLocalPath(filePath) {
@@ -859,11 +98,7 @@ class TaskExecutor {
     try {
       let absolutePath = this.resolveLocalPath(filePath);
       let stat;
-      try {
-        stat = await fs.promises.stat(absolutePath);
-      } catch {
-        return filePath;
-      }
+      try { stat = await fs.promises.stat(absolutePath); } catch { return filePath; }
       if (stat.size > TaskExecutor.MAX_BASE64_FILE_SIZE) {
         console.warn(
           `[TaskExecutor] 文件过大(${(stat.size / 1024 / 1024).toFixed(1)}MB)跳过base64:`,
@@ -894,19 +129,16 @@ class TaskExecutor {
     try {
       const absolutePath = this.resolveLocalPath(filePath);
       let fileData;
-      try {
-        fileData = await fs.promises.readFile(absolutePath);
-      } catch {
-        console.warn("[TaskExecutor] volctokens 素材文件不存在:", absolutePath);
-        return null;
-      }
+      try { fileData = await fs.promises.readFile(absolutePath); }
+      catch { console.warn("[TaskExecutor] volctokens 素材文件不存在:", absolutePath); return null; }
+      // videoBaseUrl 一般是 https://volctokens.api.mengfactory.cn（主域）
+      // 上传必须切到 upload.<主域>
       let uploadHost = "upload.volctokens.api.mengfactory.cn";
       try {
         const u = new URL(videoBaseUrl);
         const h = u.hostname.toLowerCase();
         uploadHost = h.startsWith("upload.") ? h : "upload." + h;
-      } catch {
-      }
+      } catch {}
       const ext = path.extname(absolutePath).slice(1).toLowerCase() || "png";
       const mimeMap = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif", bmp: "image/bmp" };
       const mime = mimeMap[ext] || "image/png";
@@ -919,15 +151,11 @@ class TaskExecutor {
       const upRes = await fetch(`https://${uploadHost}/api/volc/assets?${qs}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}` },
-        body: fd
+        body: fd,
       });
       const upText = await upRes.text();
       let upData;
-      try {
-        upData = upText ? JSON.parse(upText) : {};
-      } catch {
-        upData = { raw: upText };
-      }
+      try { upData = upText ? JSON.parse(upText) : {}; } catch { upData = { raw: upText }; }
       if (!upRes.ok) {
         console.warn("[TaskExecutor] volctokens 入库失败:", upRes.status, upText.slice(0, 300));
         return null;
@@ -944,23 +172,20 @@ class TaskExecutor {
         return null;
       }
       console.log(`[TaskExecutor] volctokens 入库成功: ${asset_uri.slice(0, 60)} status=${status}`);
+      // 轮询直到 active，最多 60s
       let queryHost = uploadHost.startsWith("upload.") ? uploadHost.slice("upload.".length) : uploadHost;
-      const POLL_MAX_MS = 6e4;
-      const POLL_INTERVAL_MS = 4e3;
+      const POLL_MAX_MS = 60_000;
+      const POLL_INTERVAL_MS = 4000;
       const startedAt = Date.now();
       while (status !== "active" && Date.now() - startedAt < POLL_MAX_MS) {
         await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
         try {
           const qRes = await fetch(`https://${queryHost}/v1/volc/assets/${encodeURIComponent(asset_id)}?refresh=true`, {
-            headers: { Authorization: `Bearer ${apiKey}` }
+            headers: { Authorization: `Bearer ${apiKey}` },
           });
           const qText = await qRes.text();
           let qData;
-          try {
-            qData = qText ? JSON.parse(qText) : {};
-          } catch {
-            qData = {};
-          }
+          try { qData = qText ? JSON.parse(qText) : {}; } catch { qData = {}; }
           status = qData.asset?.status || qData.status || status;
           console.log(`[TaskExecutor] volctokens 素材状态轮询: ${status}`);
           if (status === "failed") {
@@ -992,11 +217,7 @@ class TaskExecutor {
     try {
       const absolutePath = this.resolveLocalPath(text).split("?")[0];
       let fileData;
-      try {
-        fileData = await fs.promises.readFile(absolutePath);
-      } catch {
-        return null;
-      }
+      try { fileData = await fs.promises.readFile(absolutePath); } catch { return null; }
       const rootUrl = (baseUrl || "https://api.geeknow.ai").replace(/\/+$/, "");
       const fileName = path.basename(absolutePath);
       const contentType = this._geekNowMimeType(absolutePath);
@@ -1011,11 +232,7 @@ class TaskExecutor {
     const presignRes = await fetch(`${rootUrl}/api/upload/presign`, { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ file_name: fileName, content_type: contentType }) });
     const presignText = await presignRes.text();
     let presignData;
-    try {
-      presignData = presignText ? JSON.parse(presignText) : {};
-    } catch {
-      presignData = {};
-    }
+    try { presignData = presignText ? JSON.parse(presignText) : {}; } catch { presignData = {}; }
     if (!presignRes.ok) throw new Error(`presign HTTP ${presignRes.status}: ${presignText.slice(0, 200)}`);
     const uploadUrl = presignData.data?.upload_url || "";
     const publicUrl = presignData.data?.public_url || "";
@@ -1026,11 +243,7 @@ class TaskExecutor {
     const createRes = await fetch("https://api.geeknow.top/api/asset/createMedia", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ url: publicUrl, name: path.basename(fileName, path.extname(fileName)), assetType: "image" }) });
     const createText = await createRes.text();
     let createData;
-    try {
-      createData = createText ? JSON.parse(createText) : {};
-    } catch {
-      createData = {};
-    }
+    try { createData = createText ? JSON.parse(createText) : {}; } catch { createData = {}; }
     if (!createRes.ok) return publicUrl;
     const result = createData.Result || createData.result || {};
     let assetUrl = result.URL || result.url || "";
@@ -1042,12 +255,7 @@ class TaskExecutor {
     try {
       let absolutePath = this.resolveLocalPath(filePath);
       let fileData;
-      try {
-        fileData = await fs.promises.readFile(absolutePath);
-      } catch {
-        console.warn("[TaskExecutor] 文件不存在跳过上传:", absolutePath);
-        return null;
-      }
+      try { fileData = await fs.promises.readFile(absolutePath); } catch { console.warn("[TaskExecutor] 文件不存在跳过上传:", absolutePath); return null; }
       const ext = path.extname(absolutePath).toLowerCase().slice(1) || "png";
       const isAudio = ext === "mp3" || ext === "mpeg" || ext === "wav" || ext === "m4a";
       let mime, uploadName;
@@ -1068,7 +276,7 @@ class TaskExecutor {
       }
       const formData = new FormData();
       formData.append("file", new Blob([fileData], { type: mime }), uploadName);
-      TaskExecutor.debugLog(`[TaskExecutor] 上传${isAudio ? "音频" : "文件"}到中转图床...`);
+      TaskExecutor.debugLog(`[TaskExecutor] 上传${isAudio?"音频":"文件"}到中转图床...`);
       const res = await fetch("https://imageproxy.zhongzhuan.chat/api/upload", {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}` },
@@ -1091,12 +299,7 @@ class TaskExecutor {
     try {
       let absolutePath = this.resolveLocalPath(filePath);
       let fileData;
-      try {
-        fileData = await fs.promises.readFile(absolutePath);
-      } catch {
-        console.warn("[TaskExecutor] 音频文件不存在:", absolutePath);
-        return null;
-      }
+      try { fileData = await fs.promises.readFile(absolutePath); } catch { console.warn("[TaskExecutor] 音频文件不存在:", absolutePath); return null; }
       const formData = new FormData();
       formData.append("files[]", new Blob([fileData]), path.basename(absolutePath));
       TaskExecutor.debugLog("[TaskExecutor] 上传音频到uguu.se...");
@@ -1121,12 +324,7 @@ class TaskExecutor {
     try {
       let absolutePath = this.resolveLocalPath(filePath);
       let fileData;
-      try {
-        fileData = await fs.promises.readFile(absolutePath);
-      } catch {
-        console.warn("[TaskExecutor] 音频文件不存在:", absolutePath);
-        return null;
-      }
+      try { fileData = await fs.promises.readFile(absolutePath); } catch { console.warn("[TaskExecutor] 音频文件不存在:", absolutePath); return null; }
       const ext = path.extname(absolutePath).toLowerCase().slice(1) || "mp3";
       const mimeMap = { mp3: "audio/mpeg", mpeg: "audio/mpeg", wav: "audio/wav", m4a: "audio/mp4", ogg: "audio/ogg", flac: "audio/flac", aac: "audio/aac" };
       const mime = mimeMap[ext] || "audio/mpeg";
@@ -1139,12 +337,12 @@ class TaskExecutor {
         body: formData
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-      const url2 = (await res.text()).trim();
-      if (url2 && url2.startsWith("http")) {
-        TaskExecutor.debugLog("[TaskExecutor] catbox音频上传成功:", url2);
-        return url2;
+      const url = (await res.text()).trim();
+      if (url && url.startsWith("http")) {
+        TaskExecutor.debugLog("[TaskExecutor] catbox音频上传成功:", url);
+        return url;
       }
-      console.warn("[TaskExecutor] catbox响应无URL:", url2);
+      console.warn("[TaskExecutor] catbox响应无URL:", url);
     } catch (e) {
       console.error("[TaskExecutor] catbox上传异常:", e);
     }
@@ -1155,25 +353,25 @@ class TaskExecutor {
     try {
       let absolutePath = this.resolveLocalPath(filePath);
       let buffer;
-      try {
-        buffer = await fs.promises.readFile(absolutePath);
-      } catch {
-        console.warn("[TaskExecutor] volctokens: audio file not found:", absolutePath);
-        return null;
-      }
+      try { buffer = await fs.promises.readFile(absolutePath); }
+      catch { console.warn("[TaskExecutor] volctokens: audio file not found:", absolutePath); return null; }
       const ext = path.extname(absolutePath).toLowerCase().slice(1) || "mp3";
       const mimeMap = { mp3: "audio/mpeg", mpeg: "audio/mpeg", wav: "audio/wav", m4a: "audio/mp4", ogg: "audio/ogg", flac: "audio/flac", aac: "audio/aac" };
       const mime = mimeMap[ext] || "audio/mpeg";
+      // X-Filename 必须 ASCII，原始文件名带中文会让 fetch 抛 ByteString 错
       const rawName = path.basename(absolutePath);
       const asciiSafe = /^[\x20-\x7E]+$/.test(rawName) ? rawName : `voice.${ext}`;
+      // 严格按客服文档 curl 示例：POST /api/upload，二进制 body，
+      // Content-Type 为音频 MIME，X-Filename 头带文件名。不加 query、不加 hash。
+      // 期望返回 { success: true, url: "https://.../aud_xxx.mp3" }
       const res = await fetch("https://upload.volctokens.api.mengfactory.cn/api/upload", {
         method: "POST",
         headers: {
           Authorization: "Bearer " + apiKey,
           "Content-Type": mime,
-          "X-Filename": asciiSafe
+          "X-Filename": asciiSafe,
         },
-        body: buffer
+        body: buffer,
       });
       const respText = await res.text();
       console.log(`[TaskExecutor] volctokens audio upload status=${res.status} body=${respText.slice(0, 500)}`);
@@ -1197,17 +395,13 @@ class TaskExecutor {
     }
     return null;
   }
+
   static async _uploadToFilesAPI(filePath, rootUrl, headers, signal) {
     if (!filePath) return null;
     try {
       let absolutePath = this.resolveLocalPath(filePath);
       let buffer;
-      try {
-        buffer = await fs.promises.readFile(absolutePath);
-      } catch {
-        console.warn("[TaskExecutor] 音频文件不存在:", absolutePath);
-        return null;
-      }
+      try { buffer = await fs.promises.readFile(absolutePath); } catch { console.warn("[TaskExecutor] 音频文件不存在:", absolutePath); return null; }
       const ext = path.extname(absolutePath).toLowerCase().slice(1) || "mp3";
       const formData = new FormData();
       formData.append("purpose", "user_data");
@@ -1218,10 +412,7 @@ class TaskExecutor {
       const filesEndpoint = `${rootUrl}/files`;
       TaskExecutor.debugLog("[TaskExecutor] 上传音频到素材库:", filesEndpoint);
       const res = await fetch(filesEndpoint, {
-        method: "POST",
-        headers: uploadHeaders,
-        body: formData,
-        signal
+        method: "POST", headers: uploadHeaders, body: formData, signal
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
       const data = await res.json();
@@ -1274,7 +465,8 @@ class TaskExecutor {
     }
     TaskExecutor.registerSecret(cleanApiKey);
     let rootUrl = baseUrl.replace(/\/+$/, "");
-    const URL_REWRITES = {};
+    const URL_REWRITES = {
+    };
     if (URL_REWRITES[rootUrl]) {
       rootUrl = URL_REWRITES[rootUrl];
     }
@@ -1420,7 +612,7 @@ class TaskExecutor {
           throw new Error(`服务器返回了无效的响应 (HTTP ${res.status})，可能是接口路径错误或 API Key 无效。响应内容: ${_imgResText.slice(0, 300) || "(空响应体)"}`);
         }
         if (!res.ok) {
-          const _errMsg = typeof data.error === "string" ? data.error : data.error?.message || data.message || data.detail || `HTTP ${res.status}`;
+          const _errMsg = typeof data.error === "string" ? data.error : (data.error?.message || data.message || data.detail || `HTTP ${res.status}`);
           throw new Error(`API 请求失败: ${_errMsg}`);
         }
         let imageUrl = data?.data?.[0]?.url || data?.images?.[0] || data?.url || data?.data?.[0]?.image_url;
@@ -1469,21 +661,11 @@ class TaskExecutor {
         const _isCoolApi = rootUrl.includes("api.mjapi.cc.cd");
         if (_isCoolApi) {
           return await this._submitCoolApiTask({
-            rootUrl,
-            headers,
-            cleanApiKey,
-            targetModel,
-            modelId,
-            prompt,
-            duration,
-            ratio,
-            sizeStr,
-            resolution,
-            sourceImages,
-            sourceVideos,
-            sourceAudios,
-            updateCallback,
-            signal
+            rootUrl, headers, cleanApiKey,
+            targetModel, modelId, prompt,
+            duration, ratio, sizeStr, resolution,
+            sourceImages, sourceVideos, sourceAudios,
+            updateCallback, signal
           });
         }
         let submitEndpoint = _isVolcanoArk ? `${rootUrl}/contents/generations/tasks` : `${rootUrl}/v1/videos/generations`;
@@ -1495,7 +677,7 @@ class TaskExecutor {
           const _resMapG = { "720P": "720p", "480P": "480p", "1080P": "720p" };
           const _resolutionG = _resMapG[resolution] || (String(resolution || "").includes("480") ? "480p" : "720p");
           const _rawRatioG = ratio || sizeStr || "16:9";
-          const _ratioG = _rawRatioG === "Auto" || _rawRatioG === "AUTO" || _rawRatioG === "adaptive" ? "auto" : _rawRatioG;
+          const _ratioG = (_rawRatioG === "Auto" || _rawRatioG === "AUTO" || _rawRatioG === "adaptive") ? "auto" : _rawRatioG;
           reqBody = { model: "sd2_manxue_720p", prompt: prompt || "", resolution: _resolutionG, ratio: _ratioG, duration: _durationG, generate_audio: generateAudio !== void 0 ? generateAudio : true, watermark: false };
           const referenceUrls = [];
           if (sourceImages && sourceImages.length > 0) {
@@ -1512,13 +694,17 @@ class TaskExecutor {
           if (referenceUrls.length) reqBody.reference_image_urls = referenceUrls;
           console.log("[TaskExecutor] GeekNow Seedance request:", JSON.stringify({ endpoint: submitEndpoint, model: reqBody.model, ratio: reqBody.ratio, duration: reqBody.duration, resolution: reqBody.resolution, referenceCount: referenceUrls.length, firstFrame: !!reqBody.first_frame_url, lastFrame: !!reqBody.last_frame_url }));
         } else if (_isSeedanceRelay) {
+          // SeedanceFastStudio-style relay (sd2.mengfactory.cn / api.wantongapi.com)
+          // 协议参考: seedance-2-0-pro / seedance-2-0-fast 使用文档
+          // 提交: POST {baseUrl}/v1/videos  扁平 JSON
           submitEndpoint = `${rootUrl}/v1/videos`;
           const _durationRaw = duration ? parseInt(String(duration).replace("s", ""), 10) : 5;
           const _duration2 = Math.max(4, Math.min(15, _durationRaw));
           const _resMap2 = { "720P": "720p", "480P": "480p", "1080P": "1080p" };
           const _resolution2 = _resMap2[resolution] || (resolution ? String(resolution).toLowerCase() : "720p");
           const _rawRatio2 = ratio || sizeStr || "auto";
-          const _ratio2 = _rawRatio2 === "Auto" || _rawRatio2 === "AUTO" || _rawRatio2 === "adaptive" ? "auto" : _rawRatio2;
+          const _ratio2 = (_rawRatio2 === "Auto" || _rawRatio2 === "AUTO" || _rawRatio2 === "adaptive") ? "auto" : _rawRatio2;
+          // model 名优先使用 provider 配置里的 modelName（targetModel），默认 seedance-2-0-pro
           const _modelName = targetModel || "seedance-2-0-pro";
           const _isFastModel = _modelName.includes("fast");
           reqBody = {
@@ -1528,11 +714,13 @@ class TaskExecutor {
             duration: _duration2,
             reference_mode: "omni_reference"
           };
+          // Fast 模型文档明确说不要传 resolution
           if (!_isFastModel) {
             reqBody.resolution = _resolution2;
           }
           if (generateAudio !== void 0) reqBody.generate_audio = generateAudio;
           if (typeof seed === "number" && Number.isInteger(seed)) reqBody.seed = seed;
+          // 图片素材 → image_file_1 ~ image_file_9（最多 9 张，顺序填入；不区分 first/last frame）
           if (sourceImages && sourceImages.length > 0) {
             const _imgs = sourceImages.slice(0, 9);
             for (let index = 0; index < _imgs.length; index++) {
@@ -1549,6 +737,7 @@ class TaskExecutor {
               reqBody[`image_file_${index + 1}`] = finalImgSrc;
             }
           }
+          // 音频素材 → audio_file_1 ~ audio_file_9
           if (sourceAudios && sourceAudios.length > 0) {
             const _auds = sourceAudios.slice(0, 9);
             for (let index = 0; index < _auds.length; index++) {
@@ -1563,16 +752,18 @@ class TaskExecutor {
             }
           }
           console.log("[TaskExecutor] SeedanceRelay request:", JSON.stringify({
-            endpoint: submitEndpoint,
-            model: reqBody.model,
-            ratio: reqBody.ratio,
-            duration: reqBody.duration,
-            resolution: reqBody.resolution,
-            images: Object.keys(reqBody).filter((k) => k.startsWith("image_file_")).length,
-            audios: Object.keys(reqBody).filter((k) => k.startsWith("audio_file_")).length
+            endpoint: submitEndpoint, model: reqBody.model, ratio: reqBody.ratio,
+            duration: reqBody.duration, resolution: reqBody.resolution,
+            images: Object.keys(reqBody).filter(k => k.startsWith("image_file_")).length,
+            audios: Object.keys(reqBody).filter(k => k.startsWith("audio_file_")).length
           }));
         } else if (_isVolctokens) {
+          // Volctokens Seedance 2.0 (volctokens.api.mengfactory.cn)
           submitEndpoint = rootUrl + "/v1/videos";
+          // 从 configName / modelId 里识别档位关键字
+          //   含 "fast" → 用 seedance-2-0-fast 模型 + mode=std
+          //   含 "pro"  → 默认模型 + mode=pro
+          //   其它      → 默认模型 + mode=std（volctokens 多数账号是 std 套餐）
           const _vtRaw = `${targetModel || ""} ${modelId || ""}`.toLowerCase();
           const _isFast = /\bfast\b/.test(_vtRaw);
           const _isPro = !_isFast && /\bpro\b/.test(_vtRaw);
@@ -1581,9 +772,10 @@ class TaskExecutor {
           const _durSec = String(Math.max(4, Math.min(15, duration ? parseInt(String(duration).replace("s", ""), 10) : 8)));
           const _resMapV = { "720P": "720p", "480P": "480p", "1080P": "1080p" };
           let _sizeV = _resMapV[resolution] || (resolution ? String(resolution).toLowerCase() : "720p");
+          // volctokens 不支持 size=auto，文档枚举仅 480p/720p/1080p
           if (!["480p", "720p", "1080p"].includes(_sizeV)) _sizeV = "720p";
           const _rawR = ratio || sizeStr || "16:9";
-          const _ratioV = _rawR === "Auto" || _rawR === "AUTO" || _rawR === "adaptive" ? "auto" : _rawR;
+          const _ratioV = (_rawR === "Auto" || _rawR === "AUTO" || _rawR === "adaptive") ? "auto" : _rawR;
           reqBody = {
             model: _vtModel,
             prompt: prompt || "",
@@ -1599,29 +791,38 @@ class TaskExecutor {
           };
           const _sd = payload.seed;
           if (typeof _sd === "number" && Number.isInteger(_sd)) reqBody.metadata.seed = _sd;
+          // images: URL or asset:// array
           if (sourceImages && sourceImages.length > 0) {
             const arr = [];
             for (let i = 0; i < sourceImages.length; i++) {
               let s = sourceImages[i];
+              // 清洗 id 末尾被拼接的中文标签等噪声：
+              //   "asset-xxx-yyy【图1】描述文字" → "asset-xxx-yyy"
+              //   "asset://asset-xxx展示" → "asset://asset-xxx"
+              //   "asset://asset_xxx描述" → "asset://asset_xxx"
               if (typeof s === "string") {
                 const _m = s.match(/^(asset:\/\/[A-Za-z0-9_-]+|asset-[A-Za-z0-9_-]+)/);
                 if (_m) s = _m[1];
               }
+              // volctokens 真正的 asset_uri：asset://asset_<32位hex>（用下划线）
+              // 叁视漫本地 id：asset-<时间戳>-<6位>（用横线，无 asset:// 前缀也可能带）
               const _isVolctokensUri = s.startsWith("asset://asset_");
               const _isLocalSanshimanId = s.startsWith("asset-") || s.startsWith("asset://asset-");
               if (_isVolctokensUri) {
                 arr.push(s);
               } else if (_isLocalSanshimanId) {
                 throw new Error(
-                  `volctokens 不识别该素材引用：${s.slice(0, 50)}…
-这是叁视漫本地素材库的临时 id，volctokens 看不到对应文件。
-请改用以下任一方式：
-① 按 Ctrl+Q 打开虚拟人像素材库，「本地文件」模式上传图片，等到 active 后用复制好的 asset:// 引用；
-② 或者把图片以本地路径/HTTPS URL 形式直接传给视频节点（不要走素材库）。`
+                  `volctokens 不识别该素材引用：${s.slice(0, 50)}…\n` +
+                  `这是叁视漫本地素材库的临时 id，volctokens 看不到对应文件。\n` +
+                  `请改用以下任一方式：\n` +
+                  `① 按 Ctrl+Q 打开虚拟人像素材库，「本地文件」模式上传图片，等到 active 后用复制好的 asset:// 引用；\n` +
+                  `② 或者把图片以本地路径/HTTPS URL 形式直接传给视频节点（不要走素材库）。`
                 );
               } else if (s.startsWith("http://") || s.startsWith("https://") || s.startsWith("data:")) {
                 arr.push(s);
               } else {
+                // 本地路径 / sanshiman:// 等：走 volctokens 虚拟人像库自动入库（绕开真人审核）
+                // 失败再回退到图床（图床上的真人图大概率被服务端拒）
                 const auto = await this._uploadToVolctokensAsset(s, cleanApiKey, rootUrl);
                 if (auto) {
                   arr.push(auto);
@@ -1633,8 +834,11 @@ class TaskExecutor {
             }
             reqBody.images = arr;
           }
+          // audio -> metadata.content[]
+          // 客服确认接口支持音频，但实测 /api/upload 返回的是 ast_xxx 前缀（文档示例是 aud_xxx.mp3）
+          // 暂时保留尝试上传 + 用 https url + .mp3 扩展名兜底，等客服给出具体差异点后再调
           if (sourceAudios && sourceAudios.length > 0) {
-            console.log("[TaskExecutor] volctokens sourceAudios 原始值:", JSON.stringify(sourceAudios.map((s) => typeof s === "string" ? s.slice(0, 200) : typeof s)));
+            console.log("[TaskExecutor] volctokens sourceAudios 原始值:", JSON.stringify(sourceAudios.map(s => typeof s === "string" ? s.slice(0, 200) : typeof s)));
             const arr = [];
             for (const s of sourceAudios) {
               let u;
@@ -1645,20 +849,25 @@ class TaskExecutor {
                 u = await this._uploadToVolctokensCDN(s, cleanApiKey);
                 if (!u) {
                   throw new Error(
-                    "音频上传失败：volctokens CDN 拒绝了文件。\n可能原因：文件过大 / 格式不支持 / 网络问题。\n请尝试用 mp3 / wav 重传，文件名建议英文。"
+                    "音频上传失败：volctokens CDN 拒绝了文件。\n" +
+                    "可能原因：文件过大 / 格式不支持 / 网络问题。\n" +
+                    "请尝试用 mp3 / wav 重传，文件名建议英文。"
                   );
                 }
               }
               arr.push({
                 type: "audio_url",
                 audio_url: { url: u },
-                role: "reference_audio"
+                role: "reference_audio",
               });
             }
             reqBody.metadata.content = arr;
+            // role: "reference_audio" 是音色样本，需要 generate_audio: true
+            // 让模型用这个音色按 prompt 生成口播；如果 false 模型啥也不输出 → 无声视频
             reqBody.metadata.generate_audio = true;
+            // 客服确认 std/pro 都支持 reference_audio，不强制升档
           }
-          console.log("[TaskExecutor] Volctokens request (full body):", JSON.stringify(reqBody).slice(0, 2e3));
+          console.log("[TaskExecutor] Volctokens request (full body):", JSON.stringify(reqBody).slice(0, 2000));
           console.log("[TaskExecutor] Volctokens request:", JSON.stringify({
             endpoint: submitEndpoint,
             model: reqBody.model,
@@ -1668,9 +877,13 @@ class TaskExecutor {
             ratio: reqBody.metadata.ratio,
             generate_audio: reqBody.metadata.generate_audio,
             imagesCount: Array.isArray(reqBody.images) ? reqBody.images.length : 0,
-            imagesSample: Array.isArray(reqBody.images) ? reqBody.images.map((s) => typeof s === "string" ? s.slice(0, 80) : typeof s) : null,
+            imagesSample: Array.isArray(reqBody.images)
+              ? reqBody.images.map(s => typeof s === "string" ? s.slice(0, 80) : typeof s)
+              : null,
             audiosCount: Array.isArray(reqBody.metadata.content) ? reqBody.metadata.content.length : 0,
-            audiosSample: Array.isArray(reqBody.metadata.content) ? reqBody.metadata.content.map((c) => c?.audio_url?.url || "?") : null
+            audiosSample: Array.isArray(reqBody.metadata.content)
+              ? reqBody.metadata.content.map(c => c?.audio_url?.url || "?")
+              : null,
           }));
         } else if (modelId.includes("seedance") || targetModel.includes("seedance") || targetModel.includes("doubao")) {
           if (_isAiiD) {
@@ -1678,16 +891,30 @@ class TaskExecutor {
           } else {
             submitEndpoint = _isVolcanoArk ? `${rootUrl}/contents/generations/tasks` : `${rootUrl}/v1/videos/generations`;
           }
+
+          // ── 解析 resolution ──────────────────────────────────────────────
+          // 文档: 枚举值 480p / 720p / 1080p（全小写），默认 720p
           const _resMap = { "720P": "720p", "480P": "480p", "1080P": "1080p" };
           const _resolution = _resMap[resolution] || resolution || "720p";
+
+          // ── 解析 duration ─────────────────────────────────────────────────
+          // 文档: 整数秒，seedance 2.0 支持 -1（智能时长），默认 5
           const _durationRaw = duration ? parseInt(String(duration).replace("s", ""), 10) : 5;
+
+          // ── 解析 ratio ────────────────────────────────────────────────────
+          // 文档: seedance 2.0 默认 adaptive，其他默认 16:9
+          // 若 UI 没传 ratio，对 2.0 系列用 adaptive；其余保持 16:9
           const _is2x = targetModel.includes("2-0") || targetModel.includes("2.0") || targetModel.includes("1-5");
           const _ratio = ratio || sizeStr || (_is2x ? "adaptive" : "16:9");
+
+          // ── 构造 content 数组 ─────────────────────────────────────────────
           const _contentArr = [];
           if (prompt) {
             _contentArr.push({ type: "text", text: prompt });
           }
+
           if (_isVolcanoArk) {
+            // ── ARK 原生格式 ──────────────────────────────────────────────
             reqBody = {
               model: targetModel,
               content: _contentArr,
@@ -1697,13 +924,16 @@ class TaskExecutor {
               generate_audio: generateAudio !== void 0 ? generateAudio : true,
               watermark: false
             };
+            // aiid.edu.kg 要求顶层 prompt 字段
             if (_isAiiD) {
               reqBody.prompt = prompt || "生成视频";
             }
+            // 联网搜索（仅 seedance 2.0 & 2.0 fast 支持）
             if (enableWebSearch && _is2x) {
               reqBody.tools = [{ type: "web_search" }];
             }
           } else {
+            // ── 代理格式（metadata 嵌套结构）────────────────────────────
             reqBody = {
               model: targetModel,
               prompt: prompt || "请根据提供的参考内容生成视频",
@@ -1719,6 +949,8 @@ class TaskExecutor {
               reqBody.metadata.tools = [{ type: "web_search" }];
             }
           }
+
+          // ── 辅助：将内容推入对应位置 ─────────────────────────────────────
           const _pushContent = (item) => {
             if (_isVolcanoArk) {
               reqBody.content.push(item);
@@ -1726,6 +958,8 @@ class TaskExecutor {
               reqBody.metadata.content.push(item);
             }
           };
+
+          // ── 图片 ──────────────────────────────────────────────────────────
           if (sourceImages && sourceImages.length > 0) {
             for (let index = 0; index < sourceImages.length; index++) {
               const imgSrc = sourceImages[index];
@@ -1737,6 +971,7 @@ class TaskExecutor {
               } else if (normalizedImgSrc.startsWith("http://") || normalizedImgSrc.startsWith("https://") || normalizedImgSrc.startsWith("data:")) {
                 finalImgSrc = normalizedImgSrc;
               } else if (!_isVolcanoArk || _isAiiD) {
+                // 非火山引擎 / aiid 代理：上传到图床获取 HTTPS URL，避免 base64 被拒
                 const uploadedUrl = await this._uploadImageToProxy(normalizedImgSrc, cleanApiKey);
                 finalImgSrc = uploadedUrl || await this.getBase64FromLocalAsync(normalizedImgSrc);
               } else {
@@ -1749,10 +984,15 @@ class TaskExecutor {
               });
             }
           }
+
+          // ── 视频 ──────────────────────────────────────────────────────────
+          // 文档: 仅 seedance 2.0 & 2.0 fast 支持输入视频，本地视频需先上传到 Files API
           if (sourceVideos && sourceVideos.length > 0) {
             for (let i = 0; i < sourceVideos.length; i++) {
               let videoSrc = sourceVideos[i];
-              const _isLocal = videoSrc.startsWith("file://") || videoSrc.startsWith("/") || videoSrc.match(/^[a-zA-Z]:\\/) || videoSrc.includes("localhost") || videoSrc.includes("127.0.0.1") || videoSrc.startsWith("blob:");
+              const _isLocal = videoSrc.startsWith("file://") || videoSrc.startsWith("/") ||
+                videoSrc.match(/^[a-zA-Z]:\\/) || videoSrc.includes("localhost") ||
+                videoSrc.includes("127.0.0.1") || videoSrc.startsWith("blob:");
               if (_isLocal) {
                 try {
                   TaskExecutor.debugLog(`[TaskExecutor] 本地视频参考，上传到火山 Files API:`, videoSrc);
@@ -1765,10 +1005,7 @@ class TaskExecutor {
                   } else {
                     const absolutePath = this.resolveLocalPath(videoSrc);
                     if (absolutePath) {
-                      try {
-                        buffer = await fs.promises.readFile(absolutePath);
-                      } catch {
-                      }
+                      try { buffer = await fs.promises.readFile(absolutePath); } catch { /* file missing */ }
                     }
                   }
                   if (buffer) {
@@ -1780,10 +1017,7 @@ class TaskExecutor {
                     delete uploadHeaders["content-type"];
                     updateCallback(20, `正在上传视频参考到云端素材库...`);
                     const uploadRes = await fetch("https://ark.cn-beijing.volces.com/api/v3/files", {
-                      method: "POST",
-                      headers: uploadHeaders,
-                      body: formData,
-                      signal
+                      method: "POST", headers: uploadHeaders, body: formData, signal
                     });
                     if (!uploadRes.ok) {
                       throw new Error(`HTTP ${uploadRes.status}: ${await uploadRes.text()}`);
@@ -1799,9 +1033,13 @@ class TaskExecutor {
                   throw new Error(`火山素材库视频上传失败: ${e.message}`);
                 }
               }
+              // 文档: role 固定为 reference_video
               _pushContent({ type: "video_url", video_url: { url: videoSrc }, role: "reference_video" });
             }
           }
+
+          // ── 音频 ──────────────────────────────────────────────────────────
+          // 文档: 仅 seedance 2.0 & 2.0 fast 支持；不可单独输入，须配合图片或视频
           if (sourceAudios && sourceAudios.length > 0) {
             for (const audioSrc of sourceAudios) {
               let finalAudioSrc;
@@ -1810,11 +1048,14 @@ class TaskExecutor {
               } else if (!_isVolcanoArk || _isAiiD) {
                 let uploadedUrl = null;
                 if (_isAiiD) {
+                  // 优先：上传到 Catbox（返回纯音频直链，API 能正确识别）
                   uploadedUrl = await this._uploadAudioToCatbox(audioSrc);
                   if (!uploadedUrl) {
+                    // 回退：尝试 uguu.se
                     uploadedUrl = await this._uploadAudioToUguu(audioSrc);
                   }
                   if (!uploadedUrl) {
+                    // 再回退：尝试 Files API 素材库
                     uploadedUrl = await this._uploadToFilesAPI(audioSrc, rootUrl, headers, signal);
                   }
                 } else {
@@ -1872,7 +1113,7 @@ class TaskExecutor {
         }
         if (!res.ok) {
           console.error("[TaskExecutor] API error response:", _vidResText.slice(0, 500));
-          const _errMsg = typeof data.error === "string" ? data.error : data.error?.message || data.message || data.detail || `HTTP ${res.status}`;
+          const _errMsg = typeof data.error === "string" ? data.error : (data.error?.message || data.message || data.detail || `HTTP ${res.status}`);
           throw new Error(`API 请求失败: ${_errMsg}`);
         }
         let jobId = data?.id || data?.data?.id || data?.task_id;
@@ -1908,19 +1149,9 @@ class TaskExecutor {
       const buffer = await fs.promises.readFile(filePath);
       const ext = path.extname(filePath).toLowerCase().replace(/^\./, "") || "png";
       const mimeMap = {
-        jpg: "image/jpeg",
-        jpeg: "image/jpeg",
-        png: "image/png",
-        webp: "image/webp",
-        gif: "image/gif",
-        bmp: "image/bmp",
-        mp4: "video/mp4",
-        webm: "video/webm",
-        mov: "video/quicktime",
-        mp3: "audio/mpeg",
-        wav: "audio/wav",
-        ogg: "audio/ogg",
-        m4a: "audio/mp4"
+        jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif", bmp: "image/bmp",
+        mp4: "video/mp4", webm: "video/webm", mov: "video/quicktime",
+        mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", m4a: "audio/mp4"
       };
       const mime = mimeMap[ext] || "application/octet-stream";
       const fd = new FormData();
@@ -1950,6 +1181,7 @@ class TaskExecutor {
     }
     const _resMapCool = { "720P": "720p", "480P": "480p", "1080P": "1080p" };
     let _coolResolution = _resMapCool[resolution] || (resolution ? String(resolution).toLowerCase() : void 0);
+    // Cool API 仅接受 480p/720p/1080p，"auto"/"adaptive"/无效值 → 兜底 720p
     if (!["480p", "720p", "1080p"].includes(_coolResolution)) {
       _coolResolution = "720p";
     }
@@ -1958,8 +1190,9 @@ class TaskExecutor {
     }
     const _coolValidRatios = ["16:9", "9:16", "1:1", "4:3", "3:4", "3:2", "2:3", "2:1"];
     const _coolRawRatio = ratio || sizeStr || "16:9";
-    let _coolRatio = _coolRawRatio === "Auto" || _coolRawRatio === "AUTO" || _coolRawRatio === "adaptive" ? "16:9" : _coolRawRatio;
+    let _coolRatio = (_coolRawRatio === "Auto" || _coolRawRatio === "AUTO" || _coolRawRatio === "adaptive") ? "16:9" : _coolRawRatio;
     if (!_coolValidRatios.includes(_coolRatio)) _coolRatio = "16:9";
+
     const _coolFiles = [];
     const _resolveSrc = async (src, fallbackType) => {
       if (!src) return null;
@@ -1967,9 +1200,9 @@ class TaskExecutor {
         return { url: src, type: fallbackType };
       }
       if (src.startsWith("data:")) {
-        return null;
+        return null; // Cool 不支持 data: URL
       }
-      const absPath = typeof TaskExecutor.resolveLocalPath === "function" ? TaskExecutor.resolveLocalPath(src) : src;
+      const absPath = (typeof TaskExecutor.resolveLocalPath === "function") ? TaskExecutor.resolveLocalPath(src) : src;
       if (absPath) {
         const uploaded = await TaskExecutor._uploadFileToCoolApi(absPath, rootUrl, cleanApiKey);
         if (uploaded) return { url: uploaded, type: fallbackType };
@@ -1994,6 +1227,7 @@ class TaskExecutor {
         if (f) _coolFiles.push(f);
       }
     }
+
     const reqBody = {
       prompt: prompt || "",
       model: _coolModel,
@@ -2002,15 +1236,13 @@ class TaskExecutor {
     };
     if (_coolResolution) reqBody.resolution = _coolResolution;
     if (_coolFiles.length > 0) reqBody.files = _coolFiles;
+
     const submitEndpoint = `${rootUrl}/v1/cool/generate`;
     TaskExecutor.debugLog(`[TaskExecutor] Cool API submit:`, JSON.stringify({
-      endpoint: submitEndpoint,
-      model: reqBody.model,
-      ratio: reqBody.ratio,
-      duration: reqBody.duration,
-      resolution: reqBody.resolution,
-      files: _coolFiles.length
+      endpoint: submitEndpoint, model: reqBody.model, ratio: reqBody.ratio,
+      duration: reqBody.duration, resolution: reqBody.resolution, files: _coolFiles.length
     }));
+
     const submitRes = await fetch(submitEndpoint, {
       method: "POST",
       headers,
@@ -2019,11 +1251,8 @@ class TaskExecutor {
     });
     const submitText = await submitRes.text();
     let submitData;
-    try {
-      submitData = submitText ? JSON.parse(submitText) : {};
-    } catch {
-      throw new Error(`Cool API 返回非 JSON 响应 (HTTP ${submitRes.status}): ${submitText.slice(0, 300)}`);
-    }
+    try { submitData = submitText ? JSON.parse(submitText) : {}; }
+    catch { throw new Error(`Cool API 返回非 JSON 响应 (HTTP ${submitRes.status}): ${submitText.slice(0, 300)}`); }
     if (!submitRes.ok) {
       const _err = submitData?.error?.message || submitData?.message || submitData?.detail || `HTTP ${submitRes.status}`;
       throw new Error(`Cool API 提交失败: ${_err}`);
@@ -2051,7 +1280,7 @@ class TaskExecutor {
             clearInterval(timer);
             return reject(new Error("Cool API 视频轮询超时"));
           }
-          const res = await TaskExecutor.fetchWithTimeout(pollEndpoint, { method: "GET", headers, signal }, 3e4);
+          const res = await TaskExecutor.fetchWithTimeout(pollEndpoint, { method: "GET", headers, signal }, 30000);
           if (!res.ok) {
             errorCount++;
             console.error(`[TaskExecutor] [Cool Poll ${attempts}] HTTP ${res.status}, 连续错误: ${errorCount}`);
@@ -2062,9 +1291,8 @@ class TaskExecutor {
             return;
           }
           let data;
-          try {
-            data = await res.json();
-          } catch {
+          try { data = await res.json(); }
+          catch {
             errorCount++;
             if (errorCount >= 5) {
               clearInterval(timer);
@@ -2078,7 +1306,7 @@ class TaskExecutor {
           const independentErr = data?.error || data?.error_message || data?.fail_reason;
           if (independentErr && status !== "SUCCESS") {
             clearInterval(timer);
-            return reject(new Error(typeof independentErr === "string" ? independentErr : independentErr.message || "Cool API 报错"));
+            return reject(new Error(typeof independentErr === "string" ? independentErr : (independentErr.message || "Cool API 报错")));
           }
           if (status === "SUCCESS") {
             clearInterval(timer);
@@ -2091,8 +1319,9 @@ class TaskExecutor {
             }
           } else if (COOL_FAIL_STATUSES.includes(status)) {
             clearInterval(timer);
-            reject(new Error(typeof data?.error === "string" ? data.error : data?.error?.message || data?.message || `Cool API 任务${status.toLowerCase()}`));
+            reject(new Error(typeof data?.error === "string" ? data.error : (data?.error?.message || data?.message || `Cool API 任务${status.toLowerCase()}`)));
           } else {
+            // PENDING / RUNNING — Cool API 不返回 progress，本地慢爬
             progress = Math.min(95, progress + 1);
             const hint = status === "PENDING" ? "Cool API 排队中..." : "Cool API 生成中...";
             updateCallback(progress, hint);
@@ -2109,7 +1338,7 @@ class TaskExecutor {
             reject(new Error("Cool API 轮询连续网络错误，已停止: " + err.message));
           }
         }
-      }, 5e3);
+      }, 5000);
       if (signal) {
         signal.addEventListener("abort", () => {
           clearInterval(timer);
@@ -2151,7 +1380,7 @@ class TaskExecutor {
             method: "GET",
             headers,
             signal
-          }, 45e3);
+          }, 45000);
           if (!res.ok) {
             errorCount++;
             console.error(`[TaskExecutor] [Video Poll ${attempts}] HTTP ${res.status}, 连续错误: ${errorCount}`);
@@ -2175,23 +1404,28 @@ class TaskExecutor {
           }
           errorCount = 0;
           TaskExecutor.debugLog(`[TaskExecutor] [Video Poll ${attempts}]`, data.status || data.state);
+          // 一次性 debug：第 1/3/8 次轮询时把响应顶层 key 和小样本打到日志，方便排查 progress 字段
           if (attempts === 1 || attempts === 3 || attempts === 8) {
             try {
               const topKeys = data && typeof data === "object" ? Object.keys(data) : [];
               const dataKeys = data && data.data && typeof data.data === "object" ? Object.keys(data.data) : [];
               console.log(`[VideoPoll diag #${attempts}] topKeys=${JSON.stringify(topKeys)} dataKeys=${JSON.stringify(dataKeys)} sample=${JSON.stringify(data).slice(0, 400)}`);
-            } catch {
-            }
+            } catch {}
           }
           const status = (data?.data?.status || data?.status || data?.task_status || "").toUpperCase();
+          // 独立错误字段检查：响应里有 error/fail_reason 就立刻 reject，不再等 status 变 FAILED
           const independentErr = data?.data?.fail_reason || data?.fail_reason || data?.error_message || data?.data?.error_message || data?.data?.error?.message || data?.error?.message || (typeof data?.error === "string" ? data.error : null);
           if (independentErr && status !== "SUCCESS" && status !== "SUCCEEDED" && status !== "COMPLETED" && status !== "FINISHED") {
             clearInterval(timer);
             return reject(new Error(String(independentErr)));
           }
+          // 失败终态白名单：常见的服务侧失败码全部识别为失败，避免 spin 到 maxAttempts
           const FAIL_STATUSES = ["FAILED", "ERROR", "CANCELLED", "CANCELED", "EXPIRED", "TIMEOUT", "TIMED_OUT", "REJECTED", "INVALID", "BLOCKED", "FORBIDDEN", "ABORTED", "INTERNAL_ERROR", "INSUFFICIENT_QUOTA", "RATE_LIMITED"];
           if (status === "SUCCESS" || status === "SUCCEEDED" || status === "COMPLETED" || status === "FINISHED") {
             clearInterval(timer);
+            // 火山引擎 ARK 原生格式：data.video.url
+            // volctokens 格式：data.result_url 或 data.metadata.url
+            // 代理格式：data.metadata.url / data.data.video_url 等
             const finalUrl = data?.result?.url || data?.video?.url || data?.data?.video?.url || data?.metadata?.url || data?.content?.video_url || data?.data?.data?.video_url || data?.data?.video_url || data?.data?.url || data?.data?.output?.video_url || data?.data?.output || data?.result?.video_url || data?.result_url || data?.data?.result_url || data?.video_url || data?.url || data?.output || data?.data?.videos?.[0]?.url || data?.data?.videos?.[0];
             /* @__PURE__ */ console.log("[TaskExecutor] Task completed:", TaskExecutor._mask(JSON.stringify({
               status,
@@ -2211,35 +1445,23 @@ class TaskExecutor {
             }
           } else if (FAIL_STATUSES.includes(status)) {
             clearInterval(timer);
-            const rawDump = (() => {
-              try {
-                return JSON.stringify(data).slice(0, 300);
-              } catch {
-                return String(data).slice(0, 300);
-              }
-            })();
+            const rawDump = (() => { try { return JSON.stringify(data).slice(0, 300); } catch { return String(data).slice(0, 300); } })();
             console.error("[TaskExecutor] Video task FAILED, raw response:", rawDump);
             const errorStr = data?.data?.fail_reason || data?.fail_reason || data?.error?.message || data?.data?.error?.message || data?.message || data?.error || `服务侧发生未知错误 (status=${status}, raw=${rawDump})`;
             reject(new Error(errorStr));
           } else {
+            // 进度策略：完全对齐中转站。
+            // - 服务器返回 progress 时 1:1 显示，UI 数值 = 中转站数值。
+            // - 服务器没返回时降级到本地慢爬（封顶 95），并提示用户。
+            // 兼容多种字段名：progress / percent / task_progress / process
             let serverProgress;
             const cands = [
-              data?.progress,
-              data?.percent,
-              data?.task_progress,
-              data?.process,
-              data?.data?.progress,
-              data?.data?.percent,
-              data?.data?.task_progress,
-              data?.data?.process,
-              data?.result?.progress,
-              data?.output?.progress
+              data?.progress, data?.percent, data?.task_progress, data?.process,
+              data?.data?.progress, data?.data?.percent, data?.data?.task_progress, data?.data?.process,
+              data?.result?.progress, data?.output?.progress,
             ];
             for (const c of cands) {
-              if (typeof c === "number" && c >= 0 && c <= 100) {
-                serverProgress = c;
-                break;
-              }
+              if (typeof c === "number" && c >= 0 && c <= 100) { serverProgress = c; break; }
             }
             let hint;
             if (typeof serverProgress === "number") {
@@ -2259,13 +1481,14 @@ class TaskExecutor {
             return reject(new Error("Task Cancelled locally"));
           }
           console.error("[Engine] Video Poll Network Error:", err);
+          // 连续网络错误超过5次则停止轮询
           errorCount++;
           if (errorCount >= 5) {
             clearInterval(timer);
             reject(new Error("视频轮询连续网络错误，已停止: " + err.message));
           }
         }
-      }, _isVolctokensPoll ? 15e3 : 3e4);
+      }, _isVolctokensPoll ? 15000 : 3e4);
       if (signal) {
         signal.addEventListener("abort", () => {
           clearInterval(timer);
@@ -2289,7 +1512,7 @@ class TaskExecutor {
             clearInterval(timer);
             return reject(new Error("图像轮询超时"));
           }
-          const res = await TaskExecutor.fetchWithTimeout(`${rootUrl}/v1/images/tasks/${taskId}`, { headers, signal }, 3e4);
+          const res = await TaskExecutor.fetchWithTimeout(`${rootUrl}/v1/images/tasks/${taskId}`, { headers, signal }, 30000);
           if (!res.ok) {
             errorCount++;
             console.error(`[TaskExecutor] [Image Poll ${attempts}] HTTP ${res.status}, 连续错误: ${errorCount}`);
@@ -2314,11 +1537,13 @@ class TaskExecutor {
           errorCount = 0;
           TaskExecutor.debugLog(`[TaskExecutor] [Image Poll ${attempts}]`, data.status || data.state);
           const status = (data?.data?.status || data?.status || "").toUpperCase();
+          // 独立错误字段检查
           const independentErr = data?.data?.fail_reason || data?.fail_reason || data?.error_message || data?.data?.error_message || data?.data?.error?.message || data?.error?.message || (typeof data?.error === "string" ? data.error : null);
           if (independentErr && status !== "SUCCESS" && status !== "SUCCEEDED" && status !== "COMPLETED") {
             clearInterval(timer);
             return reject(new Error(String(independentErr)));
           }
+          // 失败终态白名单
           const FAIL_STATUSES_IMG = ["FAILED", "ERROR", "CANCELLED", "CANCELED", "EXPIRED", "TIMEOUT", "TIMED_OUT", "REJECTED", "INVALID", "BLOCKED", "FORBIDDEN", "ABORTED", "INTERNAL_ERROR", "INSUFFICIENT_QUOTA", "RATE_LIMITED"];
           if (status === "SUCCESS" || status === "SUCCEEDED" || status === "COMPLETED") {
             clearInterval(timer);
@@ -2348,32 +1573,23 @@ class TaskExecutor {
             const errorStr = data?.data?.fail_reason || data?.fail_reason || data?.error?.message || data?.data?.error?.message || data?.message || data?.error || `图像生成失败 (status=${status})`;
             reject(new Error(String(errorStr)));
           } else {
+            // 完全对齐中转站：服务器返回 progress 就 1:1 显示
             let serverProgress;
             const cands = [
-              data?.progress,
-              data?.percent,
-              data?.task_progress,
-              data?.process,
-              data?.data?.progress,
-              data?.data?.percent,
-              data?.data?.task_progress,
-              data?.data?.process,
-              data?.result?.progress,
-              data?.output?.progress
+              data?.progress, data?.percent, data?.task_progress, data?.process,
+              data?.data?.progress, data?.data?.percent, data?.data?.task_progress, data?.data?.process,
+              data?.result?.progress, data?.output?.progress,
             ];
             for (const c of cands) {
-              if (typeof c === "number" && c >= 0 && c <= 100) {
-                serverProgress = c;
-                break;
-              }
+              if (typeof c === "number" && c >= 0 && c <= 100) { serverProgress = c; break; }
             }
+            // 一次性 debug：第 1/3/8 次轮询时把响应顶层 key 打到日志
             if (attempts === 1 || attempts === 3 || attempts === 8) {
               try {
                 const topKeys = data && typeof data === "object" ? Object.keys(data) : [];
                 const dataKeys = data && data.data && typeof data.data === "object" ? Object.keys(data.data) : [];
                 console.log(`[ImagePoll diag #${attempts}] topKeys=${JSON.stringify(topKeys)} dataKeys=${JSON.stringify(dataKeys)} sample=${JSON.stringify(data).slice(0, 400)}`);
-              } catch {
-              }
+              } catch {}
             }
             let hint;
             if (typeof serverProgress === "number") {
@@ -2391,6 +1607,7 @@ class TaskExecutor {
             return reject(new Error("Task Cancelled locally"));
           }
           console.error("[Engine] Image Poll Network Error:", err);
+          // 连续网络错误超过5次则停止轮询
           errorCount++;
           if (errorCount >= 5) {
             clearInterval(timer);
@@ -2517,24 +1734,21 @@ class TaskQueue extends events.EventEmitter {
   }
 }
 const globalTaskQueue = new TaskQueue();
+// 自定义 API host 缓存（CORS 白名单用）。模块顶层，setupIpcHandlers / whenReady 都能访问。
 let _customApiHostsCache = null;
 let _customApiHostsLoadAt = 0;
 function _getCustomApiHosts() {
   const now = Date.now();
-  if (_customApiHostsCache && now - _customApiHostsLoadAt < 3e4) return _customApiHostsCache;
-  const set = /* @__PURE__ */ new Set();
+  if (_customApiHostsCache && now - _customApiHostsLoadAt < 30000) return _customApiHostsCache;
+  const set = new Set();
   try {
     for (const key of ["tapnow_chatApiUrl", "tapnow_imageApiUrl", "tapnow_videoApiUrl"]) {
       const v = getSetting(key);
       if (v && typeof v === "string") {
-        try {
-          set.add(new URL(v).hostname.toLowerCase());
-        } catch {
-        }
+        try { set.add(new URL(v).hostname.toLowerCase()); } catch {}
       }
     }
-  } catch {
-  }
+  } catch {}
   _customApiHostsCache = set;
   _customApiHostsLoadAt = now;
   return set;
@@ -2549,12 +1763,12 @@ async function collectStats() {
   const cpuUsage = process.cpuUsage();
   let dbStats = null;
   try {
-    if (!db) throw new Error("db not initialized");
+    if (!db$1) throw new Error("db not initialized");
     const tables = ["projects", "nodes", "connections", "history", "assets", "settings"];
     const tableCounts = {};
     for (const table of tables) {
       try {
-        const row = db.prepare(`SELECT COUNT(*) as count FROM ${table}`).get();
+        const row = db$1.prepare(`SELECT COUNT(*) as count FROM ${table}`).get();
         tableCounts[table] = row.count;
       } catch {
         tableCounts[table] = -1;
@@ -2646,6 +1860,7 @@ async function collectStats() {
     timestamp: Date.now()
   };
 }
+import { THUMB_SIZE, ensureCacheDir, getThumbPath, generateThumbnail } from "./thumbnail.js";
 let currentConfig = null;
 function setupIpcHandlers() {
   const originalHandle = electron.ipcMain.handle.bind(electron.ipcMain);
@@ -2655,6 +1870,7 @@ function setupIpcHandlers() {
       return handler(...args);
     });
   };
+  // === Seedance 虚拟人像素材库 (sd2.mengfactory.cn / api.wantongapi.com /v1/volc/assets) ===
   let _seedanceAssetsWin = null;
   globalThis._openSeedanceAssetsWindow = function() {
     if (_seedanceAssetsWin && !_seedanceAssetsWin.isDestroyed()) {
@@ -2662,22 +1878,18 @@ function setupIpcHandlers() {
       return;
     }
     _seedanceAssetsWin = new electron.BrowserWindow({
-      width: 1100,
-      height: 720,
-      title: "Seedance 虚拟人像素材库",
+      width: 1100, height: 720, title: "Seedance 虚拟人像素材库",
       backgroundColor: "#0f1117",
       webPreferences: {
         preload: path.join(__dirname, "seedance-assets-preload.js"),
         contextIsolation: true,
         nodeIntegration: false,
-        sandbox: false
-      }
+        sandbox: false,
+      },
     });
     _seedanceAssetsWin.removeMenu();
     _seedanceAssetsWin.loadFile(path.join(__dirname, "seedance-assets.html"));
-    _seedanceAssetsWin.on("closed", () => {
-      _seedanceAssetsWin = null;
-    });
+    _seedanceAssetsWin.on("closed", () => { _seedanceAssetsWin = null; });
   };
   async function _seedanceFetch(method, url2, apiKey, opts) {
     opts = opts || {};
@@ -2687,29 +1899,30 @@ function setupIpcHandlers() {
     try {
       const res = await fetch(url2, { method, headers, body: opts.body });
       const text = await res.text();
-      try {
-        data = JSON.parse(text);
-      } catch {
-        data = { raw: text };
-      }
+      try { data = JSON.parse(text); } catch { data = { raw: text }; }
       if (!res.ok) {
         const msg = data?.error?.message || data?.message || data?.error || `HTTP ${res.status}`;
-        return { ok: false, error: typeof msg === "string" ? msg : JSON.stringify(msg), status: res.status, data };
+        return { ok:false, error: typeof msg === "string" ? msg : JSON.stringify(msg), status: res.status, data };
       }
-      return { ok: true, data, status: res.status };
+      return { ok:true, data, status: res.status };
     } catch (e) {
-      return { ok: false, error: e.message || String(e) };
+      return { ok:false, error: e.message || String(e) };
     }
   }
   electron.ipcMain.handle("seedance:assets:pickFile", async (_e) => {
     try {
-      const parent = electron.BrowserWindow.fromWebContents(_e.sender) || _seedanceAssetsWin || electron.BrowserWindow.getFocusedWindow() || electron.BrowserWindow.getAllWindows()[0];
+      const parent = electron.BrowserWindow.fromWebContents(_e.sender)
+        || _seedanceAssetsWin
+        || electron.BrowserWindow.getFocusedWindow()
+        || electron.BrowserWindow.getAllWindows()[0];
       const opts = {
         title: "选择图片素材",
         properties: ["openFile"],
-        filters: [{ name: "Image", extensions: ["png", "jpg", "jpeg", "webp", "bmp", "gif"] }]
+        filters: [{ name: "Image", extensions: ["png","jpg","jpeg","webp","bmp","gif"] }]
       };
-      const r = parent ? await electron.dialog.showOpenDialog(parent, opts) : await electron.dialog.showOpenDialog(opts);
+      const r = parent
+        ? await electron.dialog.showOpenDialog(parent, opts)
+        : await electron.dialog.showOpenDialog(opts);
       if (r.canceled || !r.filePaths || !r.filePaths.length) return null;
       return r.filePaths[0];
     } catch (e) {
@@ -2717,21 +1930,20 @@ function setupIpcHandlers() {
       return null;
     }
   });
+  // 检测 baseUrl 是否是 volctokens 系（含 upload/main 两个子域）
   function _sdDetectVolctokens(baseUrl) {
     let host = "";
-    try {
-      host = new URL(baseUrl).hostname.toLowerCase();
-    } catch {
-      return null;
-    }
+    try { host = new URL(baseUrl).hostname.toLowerCase(); } catch { return null; }
     if (!host.includes("volctokens")) return null;
+    // 主域：volctokens.api.mengfactory.cn
+    // 上传域：upload.volctokens.api.mengfactory.cn
     const isUpload = host.startsWith("upload.");
     const mainHost = isUpload ? host.slice("upload.".length) : host;
     const uploadHost = isUpload ? host : "upload." + host;
     return {
       isVolctokens: true,
       mainBase: `https://${mainHost}`,
-      uploadBase: `https://${uploadHost}`
+      uploadBase: `https://${uploadHost}`,
     };
   }
   electron.ipcMain.handle("seedance:assets:create", async (_e, p) => {
@@ -2739,17 +1951,22 @@ function setupIpcHandlers() {
       const baseRaw = String(p.baseUrl || "").replace(/\/+$/, "");
       const vt = _sdDetectVolctokens(baseRaw);
       const isVolctokens = !!vt;
-      const target = isVolctokens ? `${vt.uploadBase}/api/volc/assets` : `${baseRaw}/v1/volc/assets`;
+      // volctokens 用 /api/volc/assets，sd2/wantong 用 /v1/volc/assets
+      const target = isVolctokens
+        ? `${vt.uploadBase}/api/volc/assets`
+        : `${baseRaw}/v1/volc/assets`;
+      // volctokens 上传不支持 URL 模式，文档里只有二进制/multipart
       if (p.mode === "url") {
         if (isVolctokens) {
           return { ok: false, error: "volctokens 上传仅支持本地文件，请切换到「本地文件」模式" };
         }
         const body = { url: p.url, asset_type: p.asset_type || "Image" };
-        if (p.name) body.name = p.name;
+        if (p.name)        body.name = p.name;
         if (p.description) body.description = p.description;
-        const r2 = await _seedanceFetch("POST", target, p.apiKey, { json: true, body: JSON.stringify(body) });
-        return _sdNormalizeCreateResponse(r2);
+        const r = await _seedanceFetch("POST", target, p.apiKey, { json: true, body: JSON.stringify(body) });
+        return _sdNormalizeCreateResponse(r);
       }
+      // 文件模式
       assertSafeAbsolutePath(p.filePath, Array.from(sanshimanAllowedRoots));
       const buf = await fs.promises.readFile(p.filePath);
       const ext = path.extname(p.filePath).slice(1).toLowerCase() || "png";
@@ -2758,9 +1975,10 @@ function setupIpcHandlers() {
       let url2 = target;
       let fd;
       if (isVolctokens) {
+        // asset_type/name/description 走 query string，文件走 multipart
         const qs = new URLSearchParams();
         qs.set("asset_type", p.asset_type || "Image");
-        if (p.name) qs.set("name", p.name);
+        if (p.name)        qs.set("name", p.name);
         if (p.description) qs.set("description", p.description);
         url2 = `${target}?${qs.toString()}`;
         fd = new FormData();
@@ -2769,19 +1987,20 @@ function setupIpcHandlers() {
         fd = new FormData();
         fd.append("file", new Blob([buf], { type: mime }), path.basename(p.filePath));
         fd.append("asset_type", p.asset_type || "Image");
-        if (p.name) fd.append("name", p.name);
+        if (p.name)        fd.append("name", p.name);
         if (p.description) fd.append("description", p.description);
       }
       const r = await _seedanceFetch("POST", url2, p.apiKey, { body: fd });
-      console.log("[Seedance] assets:create →", url2.replace(/\?.*$/, "?…"), "status=", r?.status, r?.ok ? "OK" : "ERR " + (r?.error || ""));
+      console.log("[Seedance] assets:create →", url2.replace(/\?.*$/, "?…"), "status=", r?.status, r?.ok ? "OK" : ("ERR " + (r?.error || "")));
       return _sdNormalizeCreateResponse(r);
-    } catch (e) {
-      return { ok: false, error: e.message || String(e) };
-    }
+    } catch (e) { return { ok: false, error: e.message || String(e) }; }
   });
+  // 把不同 API 的创建响应归一化为 { ok, asset_uri, asset_id, status, raw }
   function _sdNormalizeCreateResponse(r) {
     if (!r || !r.ok) return r;
     const d = r.data || {};
+    // volctokens：扁平 { success, status, asset_uri }
+    // sd2/wantong：嵌套 { asset: { asset_id, asset_uri, status, ... } }
     let asset_uri = d.asset_uri || d.asset?.asset_uri || "";
     let asset_id = d.asset?.asset_id || "";
     if (!asset_id && asset_uri.startsWith("asset://")) {
@@ -2795,57 +2014,47 @@ function setupIpcHandlers() {
     try {
       const baseRaw = String(p.baseUrl || "").replace(/\/+$/, "");
       const vt = _sdDetectVolctokens(baseRaw);
+      // volctokens：列表走主域（不是 upload 子域）
       const listBase = vt ? vt.mainBase : baseRaw;
       const qs = new URLSearchParams();
-      ["asset_type", "status", "search", "sort_by", "sort_order"].forEach((k) => {
-        if (p[k]) qs.set(k, p[k]);
-      });
-      if (p.page) qs.set("page", String(p.page));
+      ["asset_type", "status", "search", "sort_by", "sort_order"].forEach((k) => { if (p[k]) qs.set(k, p[k]); });
+      if (p.page)      qs.set("page", String(p.page));
       if (p.page_size) qs.set("page_size", String(p.page_size));
       const q = qs.toString();
       const url2 = `${listBase}/v1/volc/assets${q ? `?${q}` : ""}`;
       const r = await _seedanceFetch("GET", url2, p.apiKey);
-      console.log("[Seedance] assets:list →", url2.replace(/\?.*$/, q ? "?…" : ""), "status=", r?.status, r?.ok ? `OK (${r?.data?.assets?.length ?? "?"} items)` : "ERR " + (r?.error || ""));
+      console.log("[Seedance] assets:list →", url2.replace(/\?.*$/, q ? "?…" : ""), "status=", r?.status, r?.ok ? `OK (${r?.data?.assets?.length ?? "?"} items)` : ("ERR " + (r?.error || "")));
       return r;
-    } catch (e) {
-      return { ok: false, error: e.message || String(e) };
-    }
+    } catch (e) { return { ok: false, error: e.message || String(e) }; }
   });
   electron.ipcMain.handle("seedance:assets:get", async (_e, p) => {
     try {
       const baseRaw = String(p.baseUrl || "").replace(/\/+$/, "");
       const vt = _sdDetectVolctokens(baseRaw);
+      // volctokens：查询走主域，不是 upload 子域
       const queryBase = vt ? vt.mainBase : baseRaw;
       const tail = p.refresh ? "?refresh=true" : "";
       return await _seedanceFetch("GET", `${queryBase}/v1/volc/assets/${encodeURIComponent(p.asset_id)}${tail}`, p.apiKey);
-    } catch (e) {
-      return { ok: false, error: e.message || String(e) };
-    }
+    } catch (e) { return { ok: false, error: e.message || String(e) }; }
   });
   electron.ipcMain.handle("seedance:assets:delete", async (_e, p) => {
     try {
       const baseRaw = String(p.baseUrl || "").replace(/\/+$/, "");
       const vt = _sdDetectVolctokens(baseRaw);
+      // volctokens：删除走主域（不是 upload 子域）
       const deleteBase = vt ? vt.mainBase : baseRaw;
       const r = await _seedanceFetch("DELETE", `${deleteBase}/v1/volc/assets/${encodeURIComponent(p.asset_id)}`, p.apiKey);
-      console.log("[Seedance] assets:delete →", p.asset_id?.slice(0, 30), "status=", r?.status, r?.ok ? "OK" : "ERR " + (r?.error || ""));
+      console.log("[Seedance] assets:delete →", p.asset_id?.slice(0, 30), "status=", r?.status, r?.ok ? "OK" : ("ERR " + (r?.error || "")));
       return r;
-    } catch (e) {
-      return { ok: false, error: e.message || String(e) };
-    }
+    } catch (e) { return { ok: false, error: e.message || String(e) }; }
   });
   electron.ipcMain.handle("seedance:assets:copyText", async (_e, text) => {
-    try {
-      electron.clipboard.writeText(String(text || ""));
-      return { ok: true };
-    } catch (e) {
-      return { ok: false, error: e.message };
-    }
+    try { electron.clipboard.writeText(String(text||"")); return { ok:true }; }
+    catch (e) { return { ok:false, error: e.message }; }
   });
-  electron.ipcMain.handle("seedance:open-asset-library", () => {
-    globalThis._openSeedanceAssetsWindow();
-    return true;
-  });
+  electron.ipcMain.handle("seedance:open-asset-library", () => { globalThis._openSeedanceAssetsWindow(); return true; });
+
+  // 快捷键持久化（userData/seedance-config.json）
   const _SD_DEFAULT_ACCEL = "CommandOrControl+Q";
   const _sdConfigPath = path.join(electron.app.getPath("userData"), "seedance-config.json");
   function _readSdConfig() {
@@ -2853,31 +2062,21 @@ function setupIpcHandlers() {
       const txt = fs.readFileSync(_sdConfigPath, "utf8");
       const j = JSON.parse(txt);
       return j && typeof j === "object" ? j : {};
-    } catch {
-      return {};
-    }
+    } catch { return {}; }
   }
   function _writeSdConfig(obj) {
-    try {
-      fs.writeFileSync(_sdConfigPath, JSON.stringify(obj, null, 2), "utf8");
-      return true;
-    } catch (e) {
-      console.warn("[Seedance] 写配置失败:", e);
-      return false;
-    }
+    try { fs.writeFileSync(_sdConfigPath, JSON.stringify(obj, null, 2), "utf8"); return true; }
+    catch (e) { console.warn("[Seedance] 写配置失败:", e); return false; }
   }
   globalThis._sdGetShortcut = function() {
     const cfg = _readSdConfig();
-    return cfg.shortcut && typeof cfg.shortcut === "string" ? cfg.shortcut : _SD_DEFAULT_ACCEL;
+    return (cfg.shortcut && typeof cfg.shortcut === "string") ? cfg.shortcut : _SD_DEFAULT_ACCEL;
   };
   let _sdCurrentShortcut = null;
   globalThis._sdRegisterShortcut = function(accel) {
     try {
       if (_sdCurrentShortcut) {
-        try {
-          electron.globalShortcut.unregister(_sdCurrentShortcut);
-        } catch {
-        }
+        try { electron.globalShortcut.unregister(_sdCurrentShortcut); } catch {}
       }
       const ok = electron.globalShortcut.register(accel, () => {
         if (typeof globalThis._openSeedanceAssetsWindow === "function") globalThis._openSeedanceAssetsWindow();
@@ -2885,21 +2084,21 @@ function setupIpcHandlers() {
       if (ok) {
         _sdCurrentShortcut = accel;
         console.log(`[Seedance] 已注册快捷键 ${accel}`);
-        return { ok: true, accelerator: accel };
+        return { ok:true, accelerator: accel };
       } else {
         console.warn(`[Seedance] 快捷键 ${accel} 注册失败（可能被占用）`);
-        return { ok: false, error: `快捷键 ${accel} 注册失败，可能被其他程序占用`, accelerator: _sdCurrentShortcut };
+        return { ok:false, error: `快捷键 ${accel} 注册失败，可能被其他程序占用`, accelerator: _sdCurrentShortcut };
       }
     } catch (e) {
-      return { ok: false, error: e.message || String(e), accelerator: _sdCurrentShortcut };
+      return { ok:false, error: e.message || String(e), accelerator: _sdCurrentShortcut };
     }
   };
   electron.ipcMain.handle("seedance:shortcut:get", () => {
-    return { ok: true, accelerator: globalThis._sdGetShortcut(), active: _sdCurrentShortcut, default: _SD_DEFAULT_ACCEL };
+    return { ok:true, accelerator: globalThis._sdGetShortcut(), active: _sdCurrentShortcut, default: _SD_DEFAULT_ACCEL };
   });
   electron.ipcMain.handle("seedance:shortcut:set", (_e, p) => {
     const accel = String(p && p.accelerator || "").trim();
-    if (!accel) return { ok: false, error: "快捷键不能为空" };
+    if (!accel) return { ok:false, error: "快捷键不能为空" };
     const r = globalThis._sdRegisterShortcut(accel);
     if (r.ok) {
       const cfg = _readSdConfig();
@@ -2917,7 +2116,10 @@ function setupIpcHandlers() {
     }
     return r;
   });
+  // === /Seedance 虚拟人像素材库 ===
   const defaultSavePath = path.join(electron.app.getPath("userData"), "LocalCache");
+  // 启动时从 JSON 文件读取持久化的保存路径；没有则回退到 DB；都没有用默认。
+  // 用 JSON 文件是因为 better-sqlite3 在某些 Electron 版本 fallback 到 :memory: 模式，DB 不可靠。
   const _saveConfigPath = path.join(electron.app.getPath("userData"), "save-config.json");
   let _diskSavedConfig = {};
   try {
@@ -2927,6 +2129,7 @@ function setupIpcHandlers() {
   } catch (e) {
     console.error(`[savePath] read save-config.json failed:`, e && e.message);
   }
+  // DB 是 fallback 兼容旧版本
   const _savedImagePath = _diskSavedConfig.image_save_path || getSetting("image_save_path");
   const _savedVideoPath = _diskSavedConfig.video_save_path || getSetting("video_save_path");
   const _savedConvertPng = _diskSavedConfig.convert_png_to_jpg ?? getSetting("convert_png_to_jpg");
@@ -2935,10 +2138,11 @@ function setupIpcHandlers() {
   currentConfig = {
     image_save_path: _savedImagePath || path.join(defaultSavePath, "images"),
     video_save_path: _savedVideoPath || path.join(defaultSavePath, "videos"),
-    convert_png_to_jpg: _savedConvertPng === null || _savedConvertPng === void 0 ? true : _savedConvertPng === "true" || _savedConvertPng === true || _savedConvertPng === "1",
+    convert_png_to_jpg: _savedConvertPng === null || _savedConvertPng === undefined ? true : (_savedConvertPng === "true" || _savedConvertPng === true || _savedConvertPng === "1"),
     jpg_quality: _savedJpgQuality ? parseInt(String(_savedJpgQuality), 10) || 95 : 95
   };
   console.log(`[savePath] currentConfig now: image="${currentConfig.image_save_path}" video="${currentConfig.video_save_path}"`);
+  // 写盘函数：cache:config 时同步写 JSON
   function _persistSaveConfig() {
     try {
       fs.writeFileSync(_saveConfigPath, JSON.stringify({
@@ -3117,6 +2321,7 @@ function setupIpcHandlers() {
   });
   electron.ipcMain.handle("system:show-item-in-folder", (event, absolutePath) => {
     try {
+      // 路径安全校验：只允许打开 userData 或用户配置的缓存目录下的文件
       const userDataDir = electron.app.getPath("userData");
       const homeDir = electron.app.getPath("home");
       const resolvedPath = path.resolve(absolutePath);
@@ -3126,7 +2331,7 @@ function setupIpcHandlers() {
         currentConfig?.video_save_path,
         homeDir
       ].filter(Boolean);
-      const isAllowed = allowedDirs.some((dir) => resolvedPath.startsWith(path.resolve(dir)));
+      const isAllowed = allowedDirs.some(dir => resolvedPath.startsWith(path.resolve(dir)));
       if (!isAllowed) {
         console.warn("[Security] showItemInFolder blocked for path outside allowed dirs:", resolvedPath);
         return { success: false, error: "路径不在允许范围内" };
@@ -3158,7 +2363,7 @@ function setupIpcHandlers() {
         path.join(electron.app.getPath("userData"), "LocalCache"),
         currentConfig?.image_save_path,
         currentConfig?.video_save_path,
-        path.join(electron.app.getPath("userData"), "thumbnail_cache")
+        path.join(electron.app.getPath("userData"), "thumbnail_cache"),
       ].filter(Boolean).map((p) => path.resolve(p));
       const cacheRoot = path.join(electron.app.getPath("userData"), "LocalCache");
       const results = files.map((f) => {
@@ -3194,9 +2399,7 @@ function setupIpcHandlers() {
       for (const dir of dirs) {
         try {
           await fs.promises.access(dir);
-        } catch {
-          continue;
-        }
+        } catch { continue; }
         const files = await fs.promises.readdir(dir);
         for (const file of files) {
           const filePath = path.join(dir, file);
@@ -3255,7 +2458,7 @@ function setupIpcHandlers() {
       error: task.error,
       hasPayload: !!task.payload,
       payloadNodeId: task.payload?.nodeId,
-      payloadHistoryTaskId: task.payload?.historyTaskId
+      payloadHistoryTaskId: task.payload?.historyTaskId,
     });
     electron.BrowserWindow.getAllWindows().forEach((win) => {
       win.webContents.send("engine:task-update", task);
@@ -3312,8 +2515,7 @@ function setupIpcHandlers() {
       if (Array.isArray(entries) && entries.some((e) => e && typeof e.key === "string" && e.key.endsWith("ApiUrl"))) {
         _customApiHostsCache = null;
       }
-    } catch {
-    }
+    } catch {}
     return r;
   });
   electron.ipcMain.handle("safeStorage:isAvailable", () => electron.safeStorage.isEncryptionAvailable());
@@ -3335,6 +2537,7 @@ function setupIpcHandlers() {
     return await collectStats();
   });
   electron.ipcMain.handle("thumbnail:generate", async (_, { filePath, size }) => {
+    // 校验路径必须是图片文件扩展名
     const ext = path.extname(filePath).toLowerCase();
     const imageExts = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"];
     if (!imageExts.includes(ext)) {
@@ -3342,12 +2545,14 @@ function setupIpcHandlers() {
     }
     return await generateThumbnail(filePath, size);
   });
+  // 启动时自动注册缓存目录（protocol:set-allowed-roots 已移除：不再让 renderer 在运行时改白名单）
   if (currentConfig?.image_save_path) sanshimanAllowedRoots.add(path.resolve(currentConfig.image_save_path));
   if (currentConfig?.video_save_path) sanshimanAllowedRoots.add(path.resolve(currentConfig.video_save_path));
   electron.ipcMain.handle("fs:validate-project-dir", (_, dirPath) => {
     const s = (dirPath || "").trim();
     if (!s) return { ok: false, reason: "EMPTY", message: "请填写项目目录" };
     if (!path.isAbsolute(s)) return { ok: false, reason: "NOT_ABSOLUTE", message: "请使用绝对路径" };
+    // 检测是否在应用安装目录下
     if (!electron.app.isPackaged) {
       const installDir = path.resolve(path.dirname(process.execPath));
       const resolved = path.resolve(s);
@@ -3358,6 +2563,7 @@ function setupIpcHandlers() {
       if (check(installDir)) {
         return { ok: false, reason: "UNDER_INSTALL_DIR", message: `不能把项目放在应用安装目录里（${installDir}）。卸载或升级时这里会被清空，项目数据会丢失。` };
       }
+      // Windows 系统目录检测
       if (process.platform === "win32") {
         const sysDirs = [process.env.ProgramFiles, process.env["ProgramFiles(x86)"], process.env.SystemRoot].filter(Boolean);
         for (const d of sysDirs) {
@@ -3367,12 +2573,14 @@ function setupIpcHandlers() {
         }
       }
     }
+    // 可写性检测
     try {
       const probe = path.join(s, `.wlmj_probe_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
       if (fs.existsSync(s)) {
         fs.writeFileSync(probe, "");
         fs.unlinkSync(probe);
       } else {
+        // 父目录可写即可
         let parent = path.dirname(s);
         const root = path.parse(s).root;
         while (parent && parent !== root && !fs.existsSync(parent)) {
@@ -3387,10 +2595,11 @@ function setupIpcHandlers() {
     }
     return { ok: true };
   });
+  // 渲染进程日志回传：单条 size cap + 主 frame 校验，防 iframe/webview 灌日志
   electron.ipcMain.on("logger:append", (event, level, args) => {
     try {
       const frame = event.senderFrame;
-      if (!frame || typeof frame.parent !== "undefined" && frame.parent) return;
+      if (!frame || (typeof frame.parent !== "undefined" && frame.parent)) return;
       const arr = Array.isArray(args) ? args : [args];
       const MAX_ITEMS = 32;
       const MAX_ITEM_LEN = 8192;
@@ -3399,21 +2608,16 @@ function setupIpcHandlers() {
         try {
           const s = JSON.stringify(a);
           return s && s.length > MAX_ITEM_LEN ? s.slice(0, MAX_ITEM_LEN) + "…[truncated]" : s;
-        } catch {
-          return String(a).slice(0, MAX_ITEM_LEN);
-        }
+        } catch { return String(a).slice(0, MAX_ITEM_LEN); }
       });
       _appendLog("renderer", _formatLog(String(level).toUpperCase(), safe));
-    } catch {
-    }
+    } catch {}
   });
   electron.ipcMain.handle("logger:get-dir", () => LOG_DIR);
   electron.ipcMain.handle("logger:open-dir", async () => {
-    try {
-      await electron.shell.openPath(LOG_DIR);
-    } catch {
-    }
+    try { await electron.shell.openPath(LOG_DIR); } catch {}
   });
+  // 剪贴板图片复制（Windows）
   electron.ipcMain.handle("clipboard:copy-image", async (_, base64Data) => {
     try {
       const buf = Buffer.from(base64Data, "base64");
@@ -3439,10 +2643,7 @@ function setupIpcHandlers() {
           const childProcess = require("child_process");
           childProcess.execFile(exe, args, { windowsHide: true }, () => resolve());
         });
-        try {
-          await fs.promises.unlink(tmpPath);
-        } catch {
-        }
+        try { await fs.promises.unlink(tmpPath); } catch {}
         return { ok: true };
       }
       electron.clipboard.writeImage(img);
@@ -3451,18 +2652,14 @@ function setupIpcHandlers() {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
   });
-  electron.ipcMain.handle("shell:open-external", async (_, url2) => {
+  // Shell 操作
+  electron.ipcMain.handle("shell:open-external", async (_, url) => {
     try {
-      assertSafeDownloadUrl(String(url2 || ""), { allowHttp: true });
+      assertSafeDownloadUrl(String(url || ""), { allowHttp: true });
     } catch (e) {
       return { ok: false, error: e.message };
     }
-    try {
-      await electron.shell.openExternal(url2);
-      return { ok: true };
-    } catch (e) {
-      return { ok: false, error: e.message };
-    }
+    try { await electron.shell.openExternal(url); return { ok: true }; } catch (e) { return { ok: false, error: e.message }; }
   });
   electron.ipcMain.handle("shell:open-path", async (_, filePath) => {
     try {
@@ -3484,10 +2681,9 @@ function setupIpcHandlers() {
         return "forbidden path";
       }
       return await electron.shell.openPath(resolved);
-    } catch {
-      return "failed";
-    }
+    } catch { return "failed"; }
   });
+  // 应用信息
   electron.ipcMain.handle("app:get-version", () => electron.app.getVersion());
   electron.ipcMain.handle("app:get-arch", () => process.arch);
   electron.ipcMain.handle("app:is-packaged", () => electron.app.isPackaged);
@@ -3518,6 +2714,7 @@ function setupIpcHandlers() {
       return { ok: false, error: e.message };
     }
   });
+  // 窗口控制
   electron.ipcMain.handle("window:minimize", (event) => {
     electron.BrowserWindow.fromWebContents(event.sender)?.minimize();
   });
@@ -3531,11 +2728,13 @@ function setupIpcHandlers() {
   electron.ipcMain.handle("window:is-maximized", (event) => {
     return electron.BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false;
   });
+  // 保存文件对话框
   electron.ipcMain.handle("dialog:save-file", async (event, options) => {
     const win = electron.BrowserWindow.fromWebContents(event.sender) ?? electron.BrowserWindow.getFocusedWindow();
     const result = await electron.dialog.showSaveDialog(win, options ?? {});
     return result.canceled ? null : result.filePath;
   });
+  // 系统信息
   electron.ipcMain.handle("system:get-info", () => ({
     platform: process.platform,
     home: electron.app.getPath("home"),
@@ -3544,6 +2743,7 @@ function setupIpcHandlers() {
     localAppData: process.env.LOCALAPPDATA || "",
     env: { HOME: process.env.HOME || "", USERPROFILE: process.env.USERPROFILE || "" }
   }));
+  // 默认项目目录
   electron.ipcMain.handle("app:get-default-project-dir", () => {
     try {
       return path.join(electron.app.getPath("documents"), "叁视漫", "projects");
@@ -3553,17 +2753,11 @@ function setupIpcHandlers() {
   });
 }
 process.on("uncaughtException", (error) => {
-  try {
-    _appendLog("main", _formatLog("UNCAUGHT", [error]));
-  } catch {
-  }
+  try { _appendLog("main", _formatLog("UNCAUGHT", [error])); } catch {}
   _origConsole.error("[主进程] 未捕获异常:", error);
 });
 process.on("unhandledRejection", (reason) => {
-  try {
-    _appendLog("main", _formatLog("UNHANDLED_REJECTION", [reason]));
-  } catch {
-  }
+  try { _appendLog("main", _formatLog("UNHANDLED_REJECTION", [reason])); } catch {}
   _origConsole.error("[主进程] 未处理的 Promise 拒绝:", reason);
 });
 electron.app.commandLine.appendSwitch("enable-gpu-rasterization");
@@ -3585,20 +2779,19 @@ function createWindow() {
   });
   mainWindow.on("ready-to-show", () => {
     mainWindow.show();
+    // 如果数据库处于内存模式，弹窗通知用户
     if (global.__DB_MEMORY_MODE__) {
       electron.dialog.showMessageBox(mainWindow, {
         type: "warning",
         title: "数据库警告",
         message: "数据库加载失败，当前使用内存模式运行",
-        detail: `错误信息: ${global.__DB_ERROR_MSG__ || "未知"}
-
-当前会话的所有数据将在关闭应用后丢失。
-建议检查磁盘空间或文件权限后重启应用。`,
+        detail: `错误信息: ${global.__DB_ERROR_MSG__ || "未知"}\n\n当前会话的所有数据将在关闭应用后丢失。\n建议检查磁盘空间或文件权限后重启应用。`,
         buttons: ["我知道了"]
       });
     }
   });
   mainWindow.on("close", (e) => {
+    // 关闭窗口前通知渲染进程保存数据
     try {
       mainWindow.webContents.send("app-before-close");
     } catch (err) {
@@ -3618,8 +2811,8 @@ function createWindow() {
       crashCount++;
       lastCrashAt = now;
       const delay = CRASH_BACKOFF_MS[Math.min(crashCount - 1, CRASH_BACKOFF_MS.length - 1)];
-      console.warn(`[主进程] 尝试重载 (${crashCount}/${MAX_CRASH_RELOADS})，延迟 ${delay / 1e3}s`);
-      setTimeout(() => {
+      console.warn(`[主进程] 尝试重载 (${crashCount}/${MAX_CRASH_RELOADS})，延迟 ${delay / 1000}s`);
+      const updateTimer = setTimeout(() => {
         if (!mainWindow.isDestroyed()) {
           mainWindow.reload();
         }
@@ -3630,7 +2823,7 @@ function createWindow() {
   });
   mainWindow.webContents.on("did-fail-load", (event, errorCode, errorDescription) => {
     console.error("[主进程] 页面加载失败:", errorCode, errorDescription);
-    setTimeout(() => {
+    const updateTimer = setTimeout(() => {
       if (!mainWindow.isDestroyed()) {
         if (utils.is.dev && process.env["ELECTRON_RENDERER_URL"]) {
           mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
@@ -3689,50 +2882,30 @@ if (!_gotSingleInstanceLock) {
     const wins = electron.BrowserWindow.getAllWindows();
     if (wins.length > 0) {
       const w = wins[0];
-      try {
-        if (w.isMinimized()) w.restore();
-      } catch {
-      }
-      try {
-        w.focus();
-      } catch {
-      }
+      try { if (w.isMinimized()) w.restore(); } catch {}
+      try { w.focus(); } catch {}
     }
   });
 }
 electron.app.whenReady().then(() => {
   utils.electronApp.setAppUserModelId("com.sanshiman.app");
   electron.Menu.setApplicationMenu(null);
+  // CORS 注入白名单：只对已知 AI 提供商 + 用户自配 API host 放行 ACAO=*
   const _CORS_ALLOWED_HOST_SUFFIXES = [
-    "volces.com",
-    "mengfactory.cn",
-    "aiid.edu.kg",
+    "volces.com", "mengfactory.cn", "aiid.edu.kg",
     "midjourney.com",
-    "aliyun.com",
-    "alibaba.com",
-    "aliyuncs.com",
-    "bytedance.com",
-    "byteimg.com",
-    "volccdn.com",
-    "openai.com",
-    "anthropic.com",
-    "deepseek.com",
-    "googleapis.com",
-    "google.com",
-    "gstatic.com",
-    "catbox.moe",
-    "uguu.se",
-    "zhongzhuan.chat",
+    "aliyun.com", "alibaba.com", "aliyuncs.com",
+    "bytedance.com", "byteimg.com", "volccdn.com",
+    "openai.com", "anthropic.com", "deepseek.com",
+    "googleapis.com", "google.com", "gstatic.com",
+    "catbox.moe", "uguu.se", "zhongzhuan.chat",
     "sanshiman.com"
   ];
   function _isCorsAllowed(host) {
     if (!host) return false;
     const h = host.toLowerCase();
     if (_CORS_ALLOWED_HOST_SUFFIXES.some((s) => h === s || h.endsWith("." + s))) return true;
-    try {
-      if (_getCustomApiHosts().has(h)) return true;
-    } catch {
-    }
+    try { if (_getCustomApiHosts().has(h)) return true; } catch {}
     return false;
   }
   electron.session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
@@ -3742,10 +2915,7 @@ electron.app.whenReady().then(() => {
     const isLocalDev = url2.includes("localhost") || url2.includes("127.0.0.1") || url2.includes("://0.0.0.0");
     if (isExternalHttp && !isLocalDev) {
       let host = "";
-      try {
-        host = new URL(url2).hostname;
-      } catch {
-      }
+      try { host = new URL(url2).hostname; } catch {}
       if (_isCorsAllowed(host)) {
         const hasACAO = Object.keys(responseHeaders).some(
           (key) => key.toLowerCase() === "access-control-allow-origin"
@@ -3833,6 +3003,7 @@ electron.app.whenReady().then(() => {
         console.warn(`[Sanshiman Protocol] File not found: ${filePath}`);
         return new Response("File not found", { status: 404 });
       }
+      // 安全校验：限制 sanshiman:// 协议的文件类型
       const _resolvedFilePath = path.resolve(filePath);
       const _fileExt = path.extname(_resolvedFilePath).toLowerCase();
       const _allowedExts = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".mp4", ".webm", ".mov", ".ogg", ".mp3", ".wav", ".ico"];
@@ -3840,6 +3011,7 @@ electron.app.whenReady().then(() => {
         console.warn("[Sanshiman Protocol] Blocked non-media file:", _resolvedFilePath);
         return new Response("Forbidden", { status: 403 });
       }
+      // 路径白名单校验：不在白名单内直接拒绝（防止任意文件读取）
       const _isAllowed = Array.from(sanshimanAllowedRoots).some((root) => {
         const _r = path.resolve(root);
         return _resolvedFilePath === _r || _resolvedFilePath.startsWith(_r.endsWith(path.sep) ? _r : _r + path.sep);
@@ -3951,6 +3123,7 @@ electron.app.whenReady().then(() => {
   electron.ipcMain.on("ping", () => /* @__PURE__ */ console.log("pong"));
   setupIpcHandlers();
   createWindow();
+  // ── 自动更新 (electron-updater) ──────────────────────────────
   if (electron.app.isPackaged) {
     autoUpdater.autoDownload = false;
     autoUpdater.on("update-available", (info) => {
@@ -4001,15 +3174,15 @@ electron.app.whenReady().then(() => {
       if (win) win.webContents.send("updater-message", { type: "error", error: err.message });
     });
     const updateTimer = setTimeout(() => {
-      autoUpdater.checkForUpdates().catch(() => {
-      });
-    }, 5e3);
+      autoUpdater.checkForUpdates().catch(() => {});
+    }, 5000);
     electron.app.on("before-quit", () => {
       clearTimeout(updateTimer);
     });
   }
+  // Seedance 素材库全局快捷键（从配置读取，默认 CommandOrControl+Shift+A）
   try {
-    const _accel = typeof globalThis._sdGetShortcut === "function" ? globalThis._sdGetShortcut() : "CommandOrControl+Shift+A";
+    const _accel = (typeof globalThis._sdGetShortcut === "function") ? globalThis._sdGetShortcut() : "CommandOrControl+Shift+A";
     const _r = globalThis._sdRegisterShortcut(_accel);
     if (!_r.ok) {
       console.warn(`[Seedance] 配置快捷键 ${_accel} 注册失败，尝试默认值`);
@@ -4017,9 +3190,7 @@ electron.app.whenReady().then(() => {
         globalThis._sdRegisterShortcut("CommandOrControl+Shift+A");
       }
     }
-  } catch (e) {
-    console.warn("[Seedance] 快捷键注册异常:", e);
-  }
+  } catch (e) { console.warn("[Seedance] 快捷键注册异常:", e); }
   electron.app.on("activate", function() {
     if (electron.BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -4031,16 +3202,12 @@ electron.app.on("window-all-closed", () => {
 });
 let _isQuittingFlushed = false;
 electron.app.on("before-quit", (e) => {
-  try {
-    electron.globalShortcut.unregisterAll();
-  } catch {
-  }
+  try { electron.globalShortcut.unregisterAll(); } catch {}
   if (_isQuittingFlushed) return;
   _isQuittingFlushed = true;
   clearInterval(_flushTimer);
   e.preventDefault();
-  _flushAllLogs().catch(() => {
-  }).finally(() => {
+  _flushAllLogs().catch(() => {}).finally(() => {
     electron.app.quit();
   });
 });

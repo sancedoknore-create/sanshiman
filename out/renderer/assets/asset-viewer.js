@@ -179,6 +179,8 @@
     if (t) return false; // 明确写了别的类型，不是我们的菜
 
     // 兜底：节点内有 img/video（handle 在 minified bundle 里 className 不一定是 .react-flow__handle，放宽）
+    // 但要排除生成节点 — 生成节点有 textarea / 模型选择 select，不应该被当作纯查看器
+    if (el.querySelector('textarea, select, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"])')) return false;
     return !!el.querySelector('img, video');
   }
 
@@ -319,6 +321,84 @@
     el.appendChild(h);
   }
 
+  // ============== input-image 节点 fallback 渲染 ==============
+  // 当 bundle 还没实现 input-image / video-input 的 React 组件时，
+  // 节点内容区会显示 "Unknown node type: input-image"。这里检测这种情况，
+  // 把内容区替换成实际的 <img> / <video>，让节点能用起来。
+  // 等以后 bundle 真正实现了组件，此函数就成 no-op（不会再匹配到 unknown 文本）。
+  //
+  // 数据获取策略：input-image 节点的 React props 里不直接带 content；
+  // 走到 .react-flow 容器的 props.nodes 数组里按 nodeId 查（zustand store 经 props 透传过来的）。
+  let _flowNodesCache = { nodes: null, ts: 0 };
+  function _getFlowNodes() {
+    // 缓存 100ms 避免每次 augment 都重走 fiber
+    const now = Date.now();
+    if (_flowNodesCache.nodes && now - _flowNodesCache.ts < 100) {
+      return _flowNodesCache.nodes;
+    }
+    const flow = document.querySelector('.react-flow');
+    if (!flow) return null;
+    const fk = Object.keys(flow).find(function (k) { return k.startsWith('__reactFiber'); });
+    if (!fk) return null;
+    let cur = flow[fk];
+    for (let i = 0; i < 30 && cur; i++) {
+      const p = cur.memoizedProps;
+      if (p && Array.isArray(p.nodes)) {
+        _flowNodesCache = { nodes: p.nodes, ts: now };
+        return p.nodes;
+      }
+      cur = cur.return;
+    }
+    return null;
+  }
+
+  function injectFallbackMediaRenderer(el, nodeId) {
+    if (el.querySelector('.sv-fallback-media')) return; // 幂等
+    // 找节点内文本含 "Unknown node type" 的容器
+    const innerWrappers = el.querySelectorAll('.node-wrapper > div');
+    let unknownContainer = null;
+    for (const w of innerWrappers) {
+      if (w.textContent && w.textContent.includes('Unknown node type')) {
+        unknownContainer = w;
+        break;
+      }
+    }
+    if (!unknownContainer) return;
+
+    // 从 .react-flow props.nodes 数组里查这个 nodeId
+    const allNodes = _getFlowNodes();
+    if (!allNodes) return;
+    const node = allNodes.find(function (n) { return n && n.id === nodeId; });
+    if (!node) return;
+    const content = node.content;
+    if (!content) return;
+    const type = node.type;
+
+    const isVideo = (type === 'video-input') ||
+      /\.(mp4|webm|mov|ogg)(\?|$)/i.test(content);
+    const wrap = document.createElement('div');
+    wrap.className = 'sv-fallback-media';
+
+    let media;
+    if (isVideo) {
+      media = document.createElement('video');
+      media.controls = true;
+      media.muted = true;
+      media.playsInline = true;
+      media.preload = 'metadata';
+    } else {
+      media = document.createElement('img');
+      media.alt = '';
+      media.draggable = false;
+    }
+    media.src = content;
+    wrap.appendChild(media);
+
+    // 把 Unknown node type 容器替换为我们的渲染
+    unknownContainer.innerHTML = '';
+    unknownContainer.appendChild(wrap);
+  }
+
   // ============== 自动尺寸初始化 ==============
   let measureImageFactory = function () { return new Image(); };
   let measureVideoFactory = function () { return document.createElement('video'); };
@@ -425,6 +505,7 @@
     injectFilenameLabel(el);
     injectCenterClickHandler(el, nodeId);
     injectResizeHandles(el, nodeId);
+    injectFallbackMediaRenderer(el, nodeId);
 
     // 应用持久化的尺寸
     const state = ViewerStateStore.get(nodeId);
@@ -455,10 +536,27 @@
     return !startupDone;
   }
 
+  function unmanageNode(el) {
+    const nodeId = el.getAttribute('data-id');
+    el.removeAttribute(MANAGED_ATTR);
+    el.removeAttribute(VIEWER_ATTR);
+    delete el.dataset.svClickWired;
+    delete el.dataset.svIdRetries;
+    el.querySelectorAll(':scope > .sv-toggle-btn, :scope > .sv-resize-handle, :scope > .sv-filename, :scope > .sv-onboard-bubble, :scope > .sv-fallback-media').forEach(function (n) {
+      n.parentNode && n.parentNode.removeChild(n);
+    });
+    if (nodeId) ViewerStateStore.delete(nodeId);
+  }
+
   function processNode(el, isInitialScan) {
     // 时序兜底：外层 .react-flow__node 可能先于 inner .node-wrapper（带 data-node-type）挂载，
     // 第一拍识别会失败。重试 5 次（5 × 100ms = 500ms 上限）等 React 把内部 DOM 补齐。
     if (!isInputImageNode(el)) {
+      // 之前被误标过（生成节点出结果后兜底逻辑把它当成 input-image）→ 清理掉
+      if (el.getAttribute(MANAGED_ATTR) === '1') {
+        unmanageNode(el);
+        return;
+      }
       const retries = parseInt(el.dataset.svIdRetries || '0', 10);
       if (retries >= 5) return;
       el.dataset.svIdRetries = String(retries + 1);

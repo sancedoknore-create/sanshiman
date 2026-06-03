@@ -1,362 +1,347 @@
 /* ==============================================
-   叁视漫 UI 视觉升级
+   叁视漫 UI 视觉升级：星河灵卷
+   玄幻仙侠 renderer patch. No business logic.
    ============================================== */
 
-/* -------------------------------------------
-   1. 节点类型色条 - 左侧3px彩色边框区分类型
-   ------------------------------------------- */
-.node-wrapper[data-node-type="gen-image"] {
-  border-left: 3px solid #3b82f6 !important;
-}
-.node-wrapper[data-node-type="gen-video"] {
-  border-left: 3px solid #8b5cf6 !important;
-}
-.node-wrapper[data-node-type="input-image"] {
-  border-left: 3px solid #10b981 !important;
-}
-.node-wrapper[data-node-type="video-input"] {
-  border-left: 3px solid #f59e0b !important;
-}
-.node-wrapper[data-node-type="text-node"] {
-  border-left: 3px solid #6b7280 !important;
-}
-.node-wrapper[data-node-type="alchemy-node"] {
-  border-left: 3px solid #c89445 !important;
-}
-.node-wrapper[data-node-type="extract-characters-scenes"] {
-  border-left: 3px solid #14b8a6 !important;
+:root {
+  --ssm-bg-deep: #020308;
+  --ssm-bg-void: #070913;
+  --ssm-bg-panel: #10131d;
+  --ssm-bg-panel-2: #151a28;
+  --ssm-bg-node: #171d2e;
+  --ssm-bg-node-soft: #1d2540;
+
+  --ssm-text-main: #f4f1e8;
+  --ssm-text-secondary: #b8bfd4;
+  --ssm-text-muted: #6f7890;
+
+  --ssm-gold: #d6a85a;
+  --ssm-vermillion: #c94b45;
+  --ssm-vermillion-bright: #ff7a70;
+  --ssm-ink: #090b10;
+  --ssm-scroll-paper: rgba(214, 168, 90, 0.055);
+  --ssm-gold-2: #f0cf86;
+  --ssm-gold-soft: #8a6732;
+  --ssm-cyan: #5fd6ff;
+  --ssm-blue: #4f8cff;
+  --ssm-violet: #a678ff;
+  --ssm-green: #3ddc97;
+  --ssm-red: #ff6b6b;
+  --ssm-orange: #ff9f43;
+
+  --ssm-border-soft: rgba(180, 205, 255, 0.13);
+  --ssm-border-mid: rgba(120, 170, 230, 0.24);
+  --ssm-border-bright: rgba(120, 210, 255, 0.42);
+  --ssm-shadow-panel: 0 18px 48px rgba(0, 0, 0, 0.45);
+  --ssm-shadow-glow: 0 0 28px rgba(95, 214, 255, 0.14);
+
+  --bg-base: var(--ssm-bg-deep) !important;
+  --bg-panel: var(--ssm-bg-panel) !important;
+  --bg-secondary: var(--ssm-bg-panel-2) !important;
+  --text-primary: var(--ssm-text-main) !important;
+  --text-secondary: var(--ssm-text-secondary) !important;
+  --text-muted: var(--ssm-text-muted) !important;
+  --border-color: var(--ssm-border-soft) !important;
+  color-scheme: dark;
 }
 
-/* -------------------------------------------
-   2. 运行中节点发光边框 - 呼吸灯效果
-   ------------------------------------------- */
-.node-wrapper[data-node-status="running"] {
-  --glow-color: var(--primary-color, #3b82f6);
-  animation: node-glow 2s ease-in-out infinite;
-}
-.node-wrapper[data-node-status="running"][data-node-type="gen-image"] {
-  --glow-color: #3b82f6;
-}
-.node-wrapper[data-node-status="running"][data-node-type="gen-video"] {
-  --glow-color: #8b5cf6;
-}
-.node-wrapper[data-node-status="running"][data-node-type="alchemy-node"] {
-  --glow-color: #c89445;
+html,
+body,
+#root {
+  background: var(--ssm-bg-deep) !important;
+  color: var(--ssm-text-main) !important;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
 }
 
-@keyframes node-glow {
-  0%, 100% {
-    box-shadow: 0 0 6px color-mix(in srgb, var(--glow-color) 25%, transparent),
-                0 0 2px color-mix(in srgb, var(--glow-color) 40%, transparent);
-  }
-  50% {
-    box-shadow: 0 0 14px color-mix(in srgb, var(--glow-color) 45%, transparent),
-                0 0 28px color-mix(in srgb, var(--glow-color) 20%, transparent);
-  }
-}
-
-/* 完成瞬间闪烁 */
-.node-wrapper[data-node-status="completed"] {
-  animation: node-complete-flash 0.5s ease-out;
-}
-@keyframes node-complete-flash {
-  0%   { box-shadow: 0 0 16px color-mix(in srgb, #10b981 50%, transparent); }
-  100% { box-shadow: 0 0 0 transparent; }
-}
-
-/* 失败抖动 */
-.node-wrapper[data-node-status="error"] {
-  animation: node-error-shake 0.4s ease-out;
-}
-@keyframes node-error-shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-2px); }
-  40% { transform: translateX(2px); }
-  60% { transform: translateX(-1px); }
-  80% { transform: translateX(1px); }
-}
-
-/* -------------------------------------------
-   3. 选中节点发光环
-   ------------------------------------------- */
-.react-flow__node.selected .node-wrapper {
-  box-shadow: 0 0 0 2px var(--primary-color, #3b82f6),
-              0 0 10px color-mix(in srgb, var(--primary-color, #3b82f6) 25%, transparent) !important;
-}
-
-/* -------------------------------------------
-   4. 模态框入场动画
-   ------------------------------------------- */
-/* Modal backdrop + content */
-div[class*="bg-black/50"][class*="flex items-center justify-center"] {
-  animation: modal-fade-in 0.2s ease-out;
-}
-div[class*="bg-black/50"][class*="flex items-center justify-center"] > div {
-  animation: modal-slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-@keyframes modal-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-@keyframes modal-slide-up {
-  from { opacity: 0; transform: scale(0.95) translateY(8px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-/* -------------------------------------------
-   5. Toast 通知滑入
-   ------------------------------------------- */
-div[class*="bg-green-500"][class*="fixed"] {
-  animation: toast-slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-}
-@keyframes toast-slide-in {
-  from { opacity: 0; transform: translateY(-12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* -------------------------------------------
-   6. 画布暗角氛围
-   ------------------------------------------- */
-.react-flow__attribution {
-  opacity: 0.4;
-}
-
-/* -------------------------------------------
-   7. 连接线 hover 发光
-   ------------------------------------------- */
-.react-flow__edge:hover .react-flow__edge-path {
-  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--primary-color, #3b82f6) 40%, transparent));
-  transition: filter 0.2s ease;
-}
-
-/* -------------------------------------------
-   8. 画布网格点柔化
-   ------------------------------------------- */
-.react-flow__background pattern circle {
-  opacity: 0.3;
-}
-
-/* -------------------------------------------
-   9. 飞船操控台面板 — 全局输入框
-   ============================================ */
-
-/* --- 9a. 面板外框（input/textarea/select 的父级容器） --- */
-/* 给包含输入框的容器加螺丝装饰 */
-.cockpit-input-wrapper {
-  position: relative;
-  background: #3e4148;
-  padding: 3px;
-  border-radius: 3px;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.05),
-    0 3px 6px rgba(0,0,0,0.4),
-    0 0 0 1px #2a2d33;
-}
-.cockpit-input-wrapper::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  pointer-events: none;
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
   z-index: 3;
+  pointer-events: none;
   background:
-    radial-gradient(2px 2px at 10px 50%, #5a5e66 35%, #3a3d44 65%, transparent),
-    radial-gradient(2px 2px at calc(100% - 10px) 50%, #5a5e66 35%, #3a3d44 65%, transparent);
-  border-radius: 3px;
-}
-.cockpit-input-wrapper:focus-within {
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.05),
-    0 3px 6px rgba(0,0,0,0.4),
-    0 0 0 1px #2a2d33,
-    0 0 0 3px rgba(100,160,200,0.12);
+    radial-gradient(ellipse 58% 38% at 50% 35%, rgba(95, 214, 255, 0.10), rgba(214, 168, 90, 0.060) 40%, transparent 72%),
+    radial-gradient(ellipse 100% 82% at 50% 56%, transparent 54%, rgba(0, 0, 8, 0.56) 100%),
+    radial-gradient(ellipse 28% 18% at 24% 18%, rgba(201, 75, 69, 0.045), transparent 70%),
+    linear-gradient(90deg, rgba(214, 168, 90, 0.038), transparent 18%, transparent 82%, rgba(95, 214, 255, 0.032));
 }
 
-/* --- 9b. 铭牌标签 --- */
-.cockpit-label {
-  background: #4a4d55;
-  color: #999;
-  font-size: 9px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  padding: 4px 12px;
-  border-radius: 2px 2px 0 0;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.06),
-    0 1px 2px rgba(0,0,0,0.3);
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-family: 'Courier New', monospace;
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0.18;
+  background-image:
+    radial-gradient(ellipse at 50% 50%, rgba(214, 168, 90, 0.10) 0 1px, transparent 2px),
+    linear-gradient(135deg, transparent 0 46%, rgba(214, 168, 90, 0.075) 47%, transparent 49% 100%),
+    linear-gradient(45deg, transparent 0 46%, rgba(95, 214, 255, 0.055) 47%, transparent 49% 100%);
+  background-size: 96px 54px, 144px 144px, 144px 144px;
+  mask-image: radial-gradient(ellipse 60% 50% at 50% 44%, black 0%, transparent 78%);
 }
-.cockpit-label .cockpit-indicator {
-  width: 5px; height: 5px;
-  background: #3a3;
+
+.react-flow,
+.react-flow__background,
+.react-flow__renderer,
+.react-flow__viewport,
+.react-flow__pane {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.react-flow {
+  --xy-background-color: transparent !important;
+  --xy-background-color-default: transparent !important;
+}
+
+.react-flow__attribution {
+  opacity: 0.28;
+  filter: saturate(0.6);
+}
+
+.react-flow__background pattern circle {
+  opacity: 0.18;
+}
+
+.react-flow__edge-path {
+  stroke: rgba(135, 170, 220, 0.52);
+  transition: stroke 0.18s ease, filter 0.18s ease, stroke-width 0.18s ease;
+}
+
+.react-flow__edge:hover .react-flow__edge-path,
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: rgba(95, 214, 255, 0.86);
+  stroke-width: 2;
+  filter: drop-shadow(0 0 5px rgba(95, 214, 255, 0.42));
+}
+
+/* ============== React Flow nodes：符箓灵卷卡片 ============== */
+.react-flow__node {
+  background: transparent !important;
+  border-radius: 16px !important;
+  filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.32));
+}
+
+.react-flow__node > div,
+.react-flow__node > div > div,
+.node-wrapper {
+  background:
+    radial-gradient(circle at 86% 8%, rgba(201, 75, 69, 0.045), transparent 26%),
+    linear-gradient(145deg, rgba(26, 31, 48, 0.985), rgba(10, 12, 20, 0.985)) !important;
+  color: var(--ssm-text-main) !important;
+  border: 1px solid var(--ssm-border-soft) !important;
+  border-radius: 14px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+    0 16px 38px rgba(0, 0, 0, 0.34) !important;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+.node-wrapper {
+  position: relative;
+  overflow: hidden;
+  --node-accent: var(--ssm-blue);
+}
+
+.node-wrapper::before {
+  content: "";
+  position: absolute;
+  inset: 1px auto 1px 0;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, transparent, var(--ssm-gold), var(--node-accent), transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--node-accent) 46%, transparent);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.node-wrapper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 14% 0%, rgba(255, 255, 255, 0.055), transparent 26%),
+    linear-gradient(135deg, rgba(214, 168, 90, 0.070), transparent 24%, transparent 72%, rgba(95, 214, 255, 0.040));
+  opacity: 0.82;
+  z-index: 1;
+}
+
+.node-wrapper > * {
+  position: relative;
+  z-index: 3;
+}
+
+.node-wrapper[data-node-type="gen-image"] { --node-accent: var(--ssm-blue); }
+.node-wrapper[data-node-type="gen-video"] { --node-accent: var(--ssm-violet); }
+.node-wrapper[data-node-type="input-image"] { --node-accent: var(--ssm-green); }
+.node-wrapper[data-node-type="video-input"] { --node-accent: var(--ssm-orange); }
+.node-wrapper[data-node-type="text-node"] { --node-accent: #8490a8; }
+.node-wrapper[data-node-type="alchemy-node"] { --node-accent: var(--ssm-gold); }
+.node-wrapper[data-node-type="extract-characters-scenes"] { --node-accent: #24d4c8; }
+
+.react-flow__node:hover .node-wrapper {
+  border-color: rgba(150, 205, 255, 0.28) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 18px 44px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(95, 214, 255, 0.08),
+    0 0 28px rgba(95, 214, 255, 0.08) !important;
+}
+
+.react-flow__node.selected .node-wrapper {
+  border-color: rgba(95, 214, 255, 0.58) !important;
+  box-shadow:
+    0 0 0 1px rgba(214, 168, 90, 0.56),
+    0 0 0 3px rgba(95, 214, 255, 0.18),
+    0 0 28px rgba(166, 120, 255, 0.18),
+    0 18px 44px rgba(0, 0, 0, 0.46) !important;
+}
+
+.react-flow__node.selected .node-wrapper::before {
+  box-shadow: 0 0 16px rgba(214, 168, 90, 0.44), 0 0 8px rgba(201, 75, 69, 0.28);
+}
+
+.react-flow__node.selected .node-wrapper > :first-child::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  box-shadow: 0 0 4px rgba(50,180,50,0.5);
-  flex-shrink: 0;
-  transition: all 0.25s ease;
-}
-.cockpit-input-wrapper:focus-within ~ .cockpit-label .cockpit-indicator,
-.cockpit-label:has(~ .cockpit-input-wrapper:focus-within) .cockpit-indicator,
-.cockpit-input-wrapper:focus-within .cockpit-indicator,
-:focus-within > .cockpit-indicator {
-  background: #5d5;
-  box-shadow: 0 0 6px rgba(80,220,80,0.7), 0 0 12px rgba(80,220,80,0.3);
+  background: var(--ssm-vermillion);
+  box-shadow: 0 0 10px rgba(201, 75, 69, 0.45);
+  pointer-events: none;
 }
 
-/* --- 9c. 凹陷输入区 — 全局 input/textarea/select + contentEditable --- */
+.node-wrapper[data-node-status="running"] {
+  animation: ssm-node-running 3.4s linear infinite;
+}
+
+.node-wrapper[data-node-status="running"]::after {
+  opacity: 1;
+  background:
+    linear-gradient(115deg, transparent 0%, transparent 28%, color-mix(in srgb, var(--node-accent) 16%, transparent) 48%, transparent 68%, transparent 100%),
+    radial-gradient(circle at 14% 0%, rgba(255, 255, 255, 0.055), transparent 26%);
+  background-size: 240% 100%, auto;
+  animation: ssm-node-sweep 2.8s ease-in-out infinite;
+}
+
+@keyframes ssm-node-running {
+  0%, 100% { filter: drop-shadow(0 0 5px color-mix(in srgb, var(--node-accent) 16%, transparent)); }
+  50% { filter: drop-shadow(0 0 14px color-mix(in srgb, var(--node-accent) 32%, transparent)); }
+}
+
+@keyframes ssm-node-sweep {
+  from { background-position: 180% 0, 0 0; }
+  to { background-position: -80% 0, 0 0; }
+}
+
+.node-wrapper[data-node-status="completed"] {
+  animation: ssm-node-complete 0.72s ease-out;
+}
+
+@keyframes ssm-node-complete {
+  0% { box-shadow: 0 0 0 1px rgba(214,168,90,.65), 0 0 26px rgba(61,220,151,.34) !important; }
+  100% { box-shadow: inset 0 1px 0 rgba(255,255,255,.045), 0 16px 38px rgba(0,0,0,.34) !important; }
+}
+
+.node-wrapper[data-node-status="error"] {
+  border-color: rgba(255, 107, 107, 0.62) !important;
+  box-shadow: 0 0 0 1px rgba(255, 159, 67, 0.18), 0 0 24px rgba(255, 107, 107, 0.12) !important;
+  animation: ssm-node-error-shake 0.36s ease-out;
+}
+
+@keyframes ssm-node-error-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  50% { transform: translateX(2px); }
+  75% { transform: translateX(-1px); }
+}
+
+.react-flow__handle {
+  border-color: rgba(95, 214, 255, 0.65) !important;
+  background: #08111d !important;
+  box-shadow: 0 0 8px rgba(95, 214, 255, 0.25);
+}
+
+/* ============== Inputs and forms：写入灵卷 ============== */
 input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
 textarea,
 select,
 [contenteditable="true"],
 [contentEditable="true"] {
-  font-family: 'Courier New', monospace !important;
-  background: #25282d !important;
-  color: #c0c4c8 !important;
-  border: 1px solid #1a1d22 !important;
-  border-top-color: #15181c !important;
-  border-left-color: #15181c !important;
-  border-right-color: #35383e !important;
-  border-bottom-color: #35383e !important;
-  border-radius: 2px !important;
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5) !important;
-  padding: 8px 12px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif !important;
+  background: linear-gradient(180deg, rgba(14, 16, 22, 0.96), rgba(8, 10, 16, 0.96)) !important;
+  color: var(--ssm-text-main) !important;
+  border: 1px solid rgba(214, 168, 90, 0.18) !important;
+  border-radius: 8px !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.42) !important;
+  padding: 8px 11px !important;
   font-size: 13px !important;
-  line-height: 1.5 !important;
-  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
+  line-height: 1.55 !important;
   outline: none !important;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, color 0.16s ease !important;
+}
+
+input[type="password"],
+input[data-monospace="true"],
+input[class*="font-mono"],
+textarea[class*="font-mono"] {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", "Courier New", monospace !important;
 }
 
 input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"])::placeholder,
 textarea::placeholder {
-  color: #3e4148 !important;
+  color: rgba(184, 191, 212, 0.42) !important;
   opacity: 1 !important;
 }
 
-/* 凹陷区 — focus 激活 */
 input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
 textarea:focus,
 select:focus,
 [contenteditable="true"]:focus,
 [contentEditable="true"]:focus {
-  background: #1e2126 !important;
-  color: #dce0e4 !important;
-  border-top-color: #0d0f12 !important;
-  border-left-color: #0d0f12 !important;
-  box-shadow:
-    inset 0 2px 6px rgba(0,0,0,0.6),
-    0 0 0 2px rgba(120,160,200,0.18) !important;
+  background: rgba(12, 17, 29, 0.98) !important;
+  border-color: rgba(95, 214, 255, 0.52) !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.48), 0 0 0 3px rgba(95, 214, 255, 0.10) !important;
 }
 
-/* --- 9d. disabled --- */
+select {
+  cursor: pointer !important;
+  appearance: none !important;
+  padding-right: 30px !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23d6a85a' stroke-width='2.4'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
+}
+
+textarea {
+  resize: vertical !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(214, 168, 90, 0.38) rgba(7, 9, 19, 0.8);
+}
+
 input:disabled,
 textarea:disabled,
 select:disabled,
 [contenteditable="false"] {
-  opacity: 0.4 !important;
+  opacity: 0.45 !important;
   cursor: not-allowed !important;
-  filter: grayscale(40%) !important;
+  filter: saturate(0.65) !important;
 }
 
-/* --- 9e. select 箭头 --- */
-select {
-  cursor: pointer !important;
-  appearance: none !important;
-  padding-right: 28px !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
-  background-repeat: no-repeat !important;
-  background-position: right 8px center !important;
-  background-color: #25282d !important;
-}
-
-/* --- 9f. textarea 细节 --- */
-textarea {
-  line-height: 1.6 !important;
-  -webkit-font-smoothing: antialiased !important;
-  resize: vertical !important;
-}
-
-/* --- 9g. type="password" --- */
-input[type="password"] {
-  letter-spacing: 1px;
-  -webkit-text-security: disc;
-}
-
-/* --- 9h. range 滑块（保持原样，只改轨道） --- */
-input[type="range"] {
-  accent-color: #5577aa;
-}
-
-/* --- 9i. checkbox（保留原生，改 accent） --- */
+input[type="range"],
 input[type="checkbox"],
 input[type="radio"] {
-  accent-color: #5577aa;
+  accent-color: var(--ssm-gold);
 }
 
-/* --- 9j. 聊天输入区特殊处理 --- */
-/* 聊天 textarea 要稍微亮一点，因为它是主要交互区 */
-#root div[class*="flex"] > textarea,
-#root div[class*="flex"] > [contenteditable="true"],
-#root div[class*="flex"] > [contentEditable="true"],
-div[class*="chat"] textarea,
-div[class*="chat"] [contenteditable="true"],
-div[class*="chat"] [contentEditable="true"],
-form textarea,
-form [contenteditable="true"],
-form [contentEditable="true"] {
-  background: #2a2d34 !important;
-  color: #d0d4d8 !important;
-  border-top-color: #1a1d22 !important;
-  border-left-color: #1a1d22 !important;
-}
-form textarea:focus,
-form [contenteditable="true"]:focus,
-form [contentEditable="true"]:focus,
-div[class*="chat"] textarea:focus,
-div[class*="chat"] [contenteditable="true"]:focus,
-div[class*="chat"] [contentEditable="true"]:focus {
-  background: #22252b !important;
-  color: #e0e4e8 !important;
-}
-
-/* --- 9k. 内联编辑小输入框（节点重命名等） --- */
-input.nodrag[class*="w-16"],
-input.nodrag[class*="w-20"],
-input.nodrag[class*="w-24"] {
-  font-size: 10px !important;
-  padding: 4px 6px !important;
-  border-radius: 1px !important;
-}
-
-/* --- 9l. 设置面板大输入框 --- */
-div[class*="bg-black"] input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
-div[class*="bg-zinc"] input:not([type="range"]):not([type="checkbox"]):not([type="radio"]) {
-  background: #1e2127 !important;
-  border-radius: 2px !important;
-}
-
-/* --- 9m. 节点内输入框保持暗色 --- */
-.nodrag.nowheel {
-  font-family: 'Courier New', monospace !important;
-}
-
-/* --- 9n. 标签文本铭牌化（各类 label 文本） --- */
-/* 目标：紧挨在输入框前面的说明文字 */
-div[class*="text-"][class*="text-xs"]:has(+ textarea),
-div[class*="text-"][class*="text-xs"]:has(+ input),
-div[class*="text-"][class*="text-xs"]:has(+ select),
-label:has(+ input),
-label:has(+ textarea),
-label:has(+ select) {
-  font-family: 'Courier New', monospace;
-  letter-spacing: 1.5px;
-  color: #777;
-  text-transform: uppercase;
-  font-size: 9px;
-}
-
-/* --- 9o. 节点内可编辑区域强制暗色背景 --- */
-/* 覆盖 bg-black/20 等透明类，确保节点内的 textarea/contentEditable/input 都有实色背景 */
 .react-flow__node textarea,
 .react-flow__node [contenteditable="true"],
 .react-flow__node [contentEditable="true"],
@@ -365,66 +350,412 @@ label:has(+ select) {
 .node-wrapper [contenteditable="true"],
 .node-wrapper [contentEditable="true"],
 .node-wrapper input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
-.nodrag.nowheel[contenteditable="true"],
-.nodrag.nowheel[contentEditable="true"],
-textarea.nodrag,
-[contenteditable="true"].nodrag,
-[contentEditable="true"].nodrag {
+.nodrag.nowheel {
+  background: rgba(7, 10, 18, 0.82) !important;
+  color: var(--ssm-text-secondary) !important;
+}
+
+/* ============== Buttons：启阵玉牌 ============== */
+button {
+  transition: transform 0.12s ease, border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, color 0.16s ease, opacity 0.16s ease;
+}
+
+button:not([disabled]) {
+  border-radius: 9px;
+}
+
+button:not([disabled]):hover {
+  border-color: rgba(214, 168, 90, 0.42);
+  box-shadow: 0 0 0 1px rgba(214, 168, 90, 0.08), 0 8px 22px rgba(0, 0, 0, 0.24);
+}
+
+button:not([disabled]):active {
+  transform: translateY(1px) scale(0.992);
+}
+
+button[disabled] {
+  opacity: 0.46 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+}
+
+button[class*="bg-blue"],
+button[class*="bg-indigo"],
+button[class*="bg-purple"],
+button[class*="bg-green"],
+button[class*="bg-primary"] {
+  background: linear-gradient(135deg, rgba(214, 168, 90, 0.95), rgba(95, 214, 255, 0.78)) !important;
+  color: #08101a !important;
+  border: 1px solid rgba(240, 207, 134, 0.55) !important;
+  font-weight: 650 !important;
+  box-shadow: 0 8px 24px rgba(214, 168, 90, 0.13), 0 0 24px rgba(95, 214, 255, 0.08);
+}
+
+button[class*="bg-red"],
+button[class*="text-red"] {
+  background: rgba(58, 16, 18, 0.70) !important;
+  color: #ffd0c8 !important;
+  border: 1px solid rgba(201, 75, 69, 0.40) !important;
+}
+
+button[class*="bg-red"]:hover,
+button[class*="text-red"]:hover {
+  border-color: rgba(255, 107, 107, 0.55) !important;
+  box-shadow: 0 0 18px rgba(255, 107, 107, 0.12);
+}
+
+/* ============== Modals and panels：卷轴控制面板 ============== */
+div[class*="bg-black/50"][class*="flex items-center justify-center"],
+div[class*="fixed"][class*="inset-0"][class*="bg-black"] {
+  background: rgba(1, 3, 9, 0.76) !important;
+  backdrop-filter: blur(12px) saturate(1.1);
+  -webkit-backdrop-filter: blur(12px) saturate(1.1);
+  animation: ssm-modal-fade-in 0.20s ease-out;
+}
+
+div[class*="bg-black/50"][class*="flex items-center justify-center"] > div,
+div[class*="fixed"][class*="inset-0"][class*="bg-black"] > div,
+div[class*="bg-zinc"],
+div[class*="bg-neutral"] {
+  border-color: rgba(180, 205, 255, 0.13) !important;
+}
+
+div[class*="bg-black/50"][class*="flex items-center justify-center"] > div,
+div[class*="fixed"][class*="inset-0"][class*="bg-black"] > div {
+  background: linear-gradient(145deg, rgba(16, 19, 29, 0.98), rgba(8, 11, 20, 0.98)) !important;
+  border: 1px solid rgba(180, 205, 255, 0.15) !important;
+  box-shadow: var(--ssm-shadow-panel), 0 0 0 1px rgba(214, 168, 90, 0.06), 0 0 38px rgba(95, 214, 255, 0.08) !important;
+  animation: ssm-modal-slide-up 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes ssm-modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes ssm-modal-slide-up {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Small labels near inputs */
+label,
+div[class*="text-xs"]:has(+ textarea),
+div[class*="text-xs"]:has(+ input),
+div[class*="text-xs"]:has(+ select) {
+  color: rgba(184, 191, 212, 0.78);
+  letter-spacing: 0.02em;
+}
+
+/* Toasts */
+div[class*="fixed"][class*="bg-green"],
+div[class*="fixed"][class*="bg-red"],
+div[class*="fixed"][class*="bg-blue"] {
+  border: 1px solid rgba(180, 205, 255, 0.16) !important;
+  box-shadow: 0 12px 32px rgba(0,0,0,.36), 0 0 24px rgba(95,214,255,.08) !important;
+  animation: ssm-toast-slide-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes ssm-toast-slide-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Scrollbars */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(5, 7, 14, 0.7);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(214, 168, 90, 0.42), rgba(95, 214, 255, 0.28));
+  border: 2px solid rgba(5, 7, 14, 0.7);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(240, 207, 134, 0.58), rgba(95, 214, 255, 0.42));
+}
+
+.ssm-title-breath {
+  animation: ssm-title-breath 9s ease-in-out infinite;
+}
+
+@keyframes ssm-title-breath {
+  0%, 100% { letter-spacing: .28em; text-shadow: 0 0 18px rgba(214,168,90,.16); }
+  50% { letter-spacing: .40em; text-shadow: 0 0 24px rgba(95,214,255,.16); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+
+/* ============== 星河灵卷：中式角饰与云纹补强 ============== */
+.node-wrapper {
+  background-image:
+    radial-gradient(circle at 92% 9%, rgba(201, 75, 69, 0.045), transparent 22%),
+    linear-gradient(145deg, rgba(26, 31, 48, 0.985), rgba(10, 12, 20, 0.985)) !important;
+}
+.node-wrapper > :first-child { position: relative; }
+.node-wrapper > :first-child::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  pointer-events: none;
+  border-radius: 10px;
+  background:
+    linear-gradient(90deg, rgba(214,168,90,.38) 0 18px, transparent 18px) top left / 42px 1px no-repeat,
+    linear-gradient(rgba(214,168,90,.38) 0 18px, transparent 18px) top left / 1px 42px no-repeat,
+    linear-gradient(270deg, rgba(214,168,90,.30) 0 18px, transparent 18px) bottom right / 42px 1px no-repeat,
+    linear-gradient(0deg, rgba(214,168,90,.30) 0 18px, transparent 18px) bottom right / 1px 42px no-repeat;
+  opacity: .42;
+}
+button[class*="bg-blue"],
+button[class*="bg-indigo"],
+button[class*="bg-purple"],
+button[class*="bg-green"],
+button[class*="bg-primary"] {
+  background: linear-gradient(135deg, #f0cf86, #d6a85a 58%, #77d8e8) !important;
+}
+
+/* ============== 星河灵卷：编辑态保护 ==============
+   Root cause: the xianxia corner ornament was attached to
+   .node-wrapper > :first-child::before. In GenNode, the first child wraps the
+   prompt textarea, so when AI绘图/AI视频 nodes enter edit/focus state the
+   ornament layer can paint over the editable area and make typed content look
+   like it disappeared. Hide ornaments while editing and force editor text above
+   all decorative layers. */
+.node-wrapper:focus-within > :first-child::before,
+.node-wrapper:has(textarea:focus) > :first-child::before,
+.node-wrapper:has(input:focus) > :first-child::before,
+.node-wrapper:has([contenteditable="true"]:focus) > :first-child::before,
+.node-wrapper:has([contentEditable="true"]:focus) > :first-child::before {
+  display: none !important;
+}
+
+.node-wrapper textarea,
+.node-wrapper input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.node-wrapper [contenteditable="true"],
+.node-wrapper [contentEditable="true"],
+.react-flow__node textarea,
+.react-flow__node input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.react-flow__node [contenteditable="true"],
+.react-flow__node [contentEditable="true"],
+.nodrag.nowheel {
+  position: relative !important;
+  z-index: 20 !important;
+  -webkit-text-fill-color: currentColor !important;
+  caret-color: var(--ssm-gold-2) !important;
+}
+
+/* ============== 星河灵卷：生成节点编辑区强保护 V2 ==============
+   GenNode 的主体就是 textarea.nodrag.nowheel。这里不再只在 focus 时隐藏
+   单个角饰，而是对“包含生成提示词 textarea 的节点”关闭内部覆盖型伪元素，
+   防止 ::before / ::after / selected 角标 / 灵光层压住输入区。
+   保留节点外框、按钮、HUD、素材查看器等其它中国风视觉。 */
+.react-flow__node:has(textarea.nodrag.nowheel) .node-wrapper,
+.node-wrapper:has(textarea.nodrag.nowheel) {
+  overflow: visible !important;
+}
+
+.react-flow__node:has(textarea.nodrag.nowheel) .node-wrapper::after,
+.react-flow__node:has(textarea.nodrag.nowheel) .node-wrapper > :first-child::before,
+.react-flow__node:has(textarea.nodrag.nowheel) .node-wrapper > :first-child::after,
+.node-wrapper:has(textarea.nodrag.nowheel)::after,
+.node-wrapper:has(textarea.nodrag.nowheel) > :first-child::before,
+.node-wrapper:has(textarea.nodrag.nowheel) > :first-child::after {
+  content: none !important;
+  display: none !important;
+  opacity: 0 !important;
+}
+
+.react-flow__node:has(textarea.nodrag.nowheel) .node-wrapper > *:not(.react-flow__resize-control):not(.react-flow__handle),
+.node-wrapper:has(textarea.nodrag.nowheel) > *:not(.react-flow__resize-control):not(.react-flow__handle) {
+  position: relative !important;
+  z-index: 30 !important;
+}
+
+.react-flow__node textarea.nodrag.nowheel,
+.node-wrapper textarea.nodrag.nowheel,
+textarea.nodrag.nowheel {
+  display: block !important;
+  position: relative !important;
+  z-index: 100 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  color: #f4f1e8 !important;
+  -webkit-text-fill-color: #f4f1e8 !important;
+  caret-color: #f0cf86 !important;
+  background: #11141f !important;
+  background-color: #11141f !important;
+  mix-blend-mode: normal !important;
+  filter: none !important;
+  transform: translateZ(0) !important;
+}
+
+/* ============== 星河灵卷：运行时标记生成输入区 V3 ==============
+   gen-node-editor-fix.js 会把真实生成节点标记为 .ssm-gen-editor-node，
+   避开旧 Chromium 对 :has() 支持不稳定的问题。 */
+.ssm-gen-editor-node.node-wrapper::after,
+.ssm-gen-editor-node.node-wrapper > :first-child::before,
+.ssm-gen-editor-node.node-wrapper > :first-child::after,
+.ssm-gen-editor-node .node-wrapper::after,
+.ssm-gen-editor-node .node-wrapper > :first-child::before,
+.ssm-gen-editor-node .node-wrapper > :first-child::after {
+  content: none !important;
+  display: none !important;
+  opacity: 0 !important;
+}
+
+.ssm-gen-editor-node textarea.nodrag.nowheel,
+.ssm-gen-editor-node .ssm-gen-editor,
+.ssm-gen-editor-node textarea.ssm-gen-editor,
+.ssm-gen-editor {
+  display: block !important;
+  position: relative !important;
+  z-index: 1000 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  color: #fff7e8 !important;
+  -webkit-text-fill-color: #fff7e8 !important;
+  caret-color: #f0cf86 !important;
+  background: #151927 !important;
+  background-color: #151927 !important;
+  mix-blend-mode: normal !important;
+  filter: none !important;
+}
+
+.ssm-gen-editor-node:focus-within textarea.nodrag.nowheel,
+.ssm-gen-editor-node textarea.nodrag.nowheel:focus,
+.ssm-gen-editor:focus {
+  color: #fffdf4 !important;
+  -webkit-text-fill-color: #fffdf4 !important;
+  background: #181d2c !important;
+  background-color: #181d2c !important;
+  border-color: rgba(240, 207, 134, 0.72) !important;
+  outline: 1px solid rgba(240, 207, 134, 0.28) !important;
+}
+
+/* ============== 星河灵卷：生成节点朴素稳定回退 V4 ==============
+   前三次局部修复后仍异常，说明生成节点不适合叠加装饰层/contain/filter。
+   这里仅把 AI绘图/AI视频 的生成节点回退成稳定朴素样式；背景、HUD、按钮、
+   素材查看器等其它中国风视觉继续保留。 */
+.react-flow__node.ssm-gen-editor-node,
+.ssm-gen-editor-node.node-wrapper,
+.ssm-gen-editor-node .node-wrapper {
+  background: #1f2640 !important;
+  background-color: #1f2640 !important;
+  background-image: none !important;
+  border: 1px solid rgba(140, 180, 230, 0.22) !important;
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.36) !important;
+  filter: none !important;
+  transform: none !important;
+  contain: none !important;
+  content-visibility: visible !important;
+  overflow: visible !important;
+}
+
+.ssm-gen-editor-node.node-wrapper::before,
+.ssm-gen-editor-node.node-wrapper::after,
+.ssm-gen-editor-node.node-wrapper > :first-child::before,
+.ssm-gen-editor-node.node-wrapper > :first-child::after,
+.ssm-gen-editor-node .node-wrapper::before,
+.ssm-gen-editor-node .node-wrapper::after,
+.ssm-gen-editor-node .node-wrapper > :first-child::before,
+.ssm-gen-editor-node .node-wrapper > :first-child::after,
+.react-flow__node.ssm-gen-editor-node .node-wrapper::before,
+.react-flow__node.ssm-gen-editor-node .node-wrapper::after,
+.react-flow__node.ssm-gen-editor-node .node-wrapper > :first-child::before,
+.react-flow__node.ssm-gen-editor-node .node-wrapper > :first-child::after {
+  content: none !important;
+  display: none !important;
+  opacity: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  animation: none !important;
+}
+
+.ssm-gen-editor-node.node-wrapper > *:not(.react-flow__resize-control):not(.react-flow__handle),
+.ssm-gen-editor-node .node-wrapper > *:not(.react-flow__resize-control):not(.react-flow__handle),
+.react-flow__node.ssm-gen-editor-node .node-wrapper > *:not(.react-flow__resize-control):not(.react-flow__handle) {
+  position: relative !important;
+  z-index: auto !important;
+  filter: none !important;
+  transform: none !important;
+  contain: none !important;
+  content-visibility: visible !important;
+}
+
+/* ReactFlow 的 resize-control 和 handle 必须保持 absolute 浮层定位，
+   防止上面的 `> *` 通配规则把它们卷进 flex-col 排队、挤压内容区。 */
+.react-flow__node .react-flow__resize-control,
+.react-flow__node .react-flow__handle,
+.node-wrapper .react-flow__resize-control,
+.node-wrapper .react-flow__handle {
+  position: absolute !important;
+  flex: 0 0 auto !important;
+  z-index: 4 !important;
+}
+
+.ssm-gen-editor-node textarea.nodrag.nowheel.ssm-gen-editor,
+.ssm-gen-editor-node textarea.nodrag.nowheel,
+textarea.nodrag.nowheel.ssm-gen-editor {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  position: static !important;
+  z-index: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif !important;
+  font-size: 12px !important;
+  line-height: 1.625 !important;
+  color: #f4f4f5 !important;
+  -webkit-text-fill-color: #f4f4f5 !important;
+  caret-color: #60a5fa !important;
   background: #1e2127 !important;
   background-color: #1e2127 !important;
-  color: #c0c4c8 !important;
+  background-image: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  mix-blend-mode: normal !important;
+  filter: none !important;
+  transform: none !important;
+  transition: background-color 0.15s ease, color 0.15s ease !important;
 }
-.react-flow__node textarea:focus,
-.react-flow__node [contenteditable="true"]:focus,
-.react-flow__node [contentEditable="true"]:focus,
-.react-flow__node input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
-.node-wrapper textarea:focus,
-.node-wrapper [contenteditable="true"]:focus,
-.node-wrapper [contentEditable="true"]:focus,
-.nodrag.nowheel[contenteditable="true"]:focus,
-.nodrag.nowheel[contentEditable="true"]:focus,
-textarea.nodrag:focus,
-[contenteditable="true"].nodrag:focus,
-[contentEditable="true"].nodrag:focus {
+
+.ssm-gen-editor-node textarea.nodrag.nowheel.ssm-gen-editor:focus,
+.ssm-gen-editor-node textarea.nodrag.nowheel:focus,
+textarea.nodrag.nowheel.ssm-gen-editor:focus {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
   background: #24272e !important;
   background-color: #24272e !important;
-  color: #dce0e4 !important;
-}
-
-/* -------------------------------------------
-   10. 按钮 active 按压反馈
-   ------------------------------------------- */
-button:not([disabled]):active {
-  transform: scale(0.97);
-  transition: transform 0.1s ease-out;
-}
-
-/* -------------------------------------------
-   11. 背景强制透明 — 让 starfield canvas 显示
-   ------------------------------------------- */
-html, body, #root {
-  background-color: #020308 !important;
-  background: #020308 !important;
-  --bg-base: #09090b !important;
-  --bg-panel: #18181b !important;
-  --bg-secondary: #18181b !important;
-  --text-primary: #f4f4f5 !important;
-  --text-secondary: #a1a1aa !important;
-  --text-muted: #71717a !important;
-  --border-color: #ffffff1a !important;
-}
-
-.react-flow,
-.react-flow__background,
-.react-flow__renderer,
-.react-flow__viewport,
-.react-flow__pane,
-.react-flow__node {
-  background-color: transparent !important;
-  background: transparent !important;
-}
-
-/* 仅画布外层容器变透明 */
-div[class*="flex-1 relative overflow-hidden flex transition-colors"] {
-  background-color: transparent !important;
+  background-image: none !important;
+  outline: 1px solid rgba(96, 165, 250, 0.45) !important;
+  outline-offset: -1px !important;
 }

@@ -119,16 +119,33 @@
     <script src="./assets/starfield-bg.js"></script>
     <script src="./assets/missing-image.js"></script>
     <script src="./assets/asset-viewer.js"></script>
+    <script src="./assets/gen-node-editor-fix.js"></script>
     <script>
       window.onerror = function (message, source, lineno, colno, error) {
-        document.getElementById('root').innerHTML =
-          '<div style="color:white; z-index:99999; position:absolute; top:20px; left:20px; font-size: 20px;">' +
-          message +
-          '<br/>' +
-          source +
-          ':' +
-          lineno +
+        var root = document.getElementById('root')
+        if (!root) return
+        var detail = String(message || '未知错误') + '\n' + String(source || '') + ':' + String(lineno || 0) + ':' + String(colno || 0)
+        var safe = function (v) {
+          return String(v || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+        }
+        root.innerHTML =
+          '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px;background:radial-gradient(ellipse 70% 55% at 50% 35%,rgba(95,214,255,.10),transparent 62%),#020308;color:#f4f1e8;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Microsoft YaHei UI,sans-serif;">' +
+            '<section style="width:min(720px,calc(100vw - 48px));border:1px solid rgba(180,205,255,.16);border-radius:18px;background:linear-gradient(145deg,rgba(16,19,29,.96),rgba(8,11,20,.96));box-shadow:0 24px 70px rgba(0,0,0,.55),0 0 0 1px rgba(214,168,90,.08),0 0 42px rgba(95,214,255,.10);overflow:hidden;">' +
+              '<div style="height:2px;background:linear-gradient(90deg,transparent,#d6a85a,#c94b45,#5fd6ff,transparent);"></div>' +
+              '<div style="padding:26px 28px 28px;">' +
+                '<div style="display:inline-flex;align-items:center;gap:8px;margin-bottom:16px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,107,107,.24);background:rgba(60,18,22,.34);color:#ffb0a8;font-size:12px;">朱砂警示</div>' +
+                '<h1 style="margin:0 0 8px;font-size:28px;letter-spacing:.04em;color:#f4f1e8;">界面加载失败</h1>' +
+                '<p style="margin:0 0 18px;color:#b8bfd4;line-height:1.7;">叁视漫灵卷界面遇到渲染异常。请截图或复制下面的信息，重启应用后如果仍出现，再查看日志目录。</p>' +
+                '<pre style="white-space:pre-wrap;word-break:break-word;margin:0;padding:14px 16px;border-radius:12px;border:1px solid rgba(180,205,255,.13);background:rgba(2,3,8,.54);color:#ffd0c8;font-size:12px;line-height:1.6;">' + safe(detail) + '</pre>' +
+              '</div>' +
+            '</section>' +
           '</div>'
+        try { console.error('[renderer-fallback]', detail, error) } catch (_) {}
       }
     </script>
   </body>
