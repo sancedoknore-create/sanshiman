@@ -188,7 +188,7 @@ onMounted(() => {
 
       if (nodeStore.selectedNodeId) {
         nodeStore.removeNode(nodeStore.selectedNodeId)
-        showProperties.value = false
+        // showProperties.value = false
         event.preventDefault()
       }
     }
@@ -313,7 +313,7 @@ onMounted(() => {
     if (event.key === 'Delete' || event.key === 'Backspace') {
       if (nodeStore.selectedNodeId) {
         nodeStore.removeNode(nodeStore.selectedNodeId)
-        showProperties.value = false
+        // showProperties.value = false
       }
     }
   }
