@@ -886,6 +886,14 @@ const statusText = computed(() => {
   border-radius: 8px;
 }
 
+.video-preview {
+  cursor: pointer;
+}
+
+.video-preview::-webkit-media-controls-panel {
+  background: rgba(2, 3, 8, 0.8);
+}
+
 .node-title-main {
   font-size: 16px;
   color: #ffffff;
