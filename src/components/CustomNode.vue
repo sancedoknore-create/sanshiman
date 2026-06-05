@@ -102,8 +102,8 @@
           </div>
 
           <!-- 素材缩略图区域 -->
-          <div v-if="type === 'ai-video' && allAssets.length > 0" class="assets-preview">
-            <div class="asset-item" v-for="asset in allAssets" :key="asset.id">
+          <div v-if="(type === 'ai-video' || type === 'ai-image') && filteredAssetsForNode.length > 0" class="assets-preview">
+            <div class="asset-item" v-for="asset in filteredAssetsForNode" :key="asset.id">
               <!-- 图片缩略图 -->
               <div v-if="asset.type === 'image'" class="asset-thumbnail">
                 <img :src="asset.url" :alt="asset.name" />
@@ -137,7 +137,7 @@
             <label class="asset-upload">
               <input
                 type="file"
-                accept="image/*,video/*,audio/*"
+                :accept="type === 'ai-image' ? 'image/*' : 'image/*,video/*,audio/*'"
                 multiple
                 @change="handleFileUpload"
                 style="display: none"
@@ -147,11 +147,11 @@
           </div>
 
           <!-- 首次上传按钮（无素材时） -->
-          <div v-if="type === 'ai-video' && allAssets.length === 0 && currentTab !== 'text-to-video'" class="upload-prompt">
+          <div v-if="(type === 'ai-video' || type === 'ai-image') && filteredAssetsForNode.length === 0 && currentTab !== 'text-to-video'" class="upload-prompt">
             <label class="upload-prompt-btn">
               <input
                 type="file"
-                accept="image/*,video/*,audio/*"
+                :accept="type === 'ai-image' ? 'image/*' : 'image/*,video/*,audio/*'"
                 multiple
                 @change="handleFileUpload"
                 style="display: none"
@@ -779,6 +779,16 @@ const connectedAssets = computed(() => {
 // 合并上传的素材和连接的素材
 const allAssets = computed(() => {
   return [...connectedAssets.value, ...uploadedAssets.value]
+})
+
+// 根据节点类型过滤素材
+// 绘图节点：只显示图片
+// 视频节点：显示所有类型
+const filteredAssetsForNode = computed(() => {
+  if (props.type === 'ai-image') {
+    return allAssets.value.filter(asset => asset.type === 'image')
+  }
+  return allAssets.value
 })
 
 // 视频节点选项卡 - 根据输入动态启用
