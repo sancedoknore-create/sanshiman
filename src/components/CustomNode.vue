@@ -816,6 +816,63 @@ const statusText = computed(() => {
   max-width: 300px;
 }
 
+/* 进度显示 */
+.progress-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  gap: 8px;
+}
+
+.progress-number {
+  font-size: 80px;
+  font-weight: 700;
+  color: #00D9FF;
+  text-shadow: 0 0 20px rgba(0, 217, 255, 0.6);
+  line-height: 1;
+}
+
+.progress-text {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.8);
+  letter-spacing: 2px;
+}
+
+/* 生成中的动态背景 */
+.node-content.generating {
+  background: linear-gradient(
+    45deg,
+    rgba(0, 217, 255, 0.1) 0%,
+    rgba(180, 50, 255, 0.1) 50%,
+    rgba(0, 217, 255, 0.1) 100%
+  );
+  background-size: 200% 200%;
+  animation: gradientShift 3s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* 生成结果预览 */
+.generated-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
 .node-title-main {
   font-size: 16px;
   color: #ffffff;
