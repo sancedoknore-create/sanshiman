@@ -29,7 +29,23 @@
 
     <!-- 生成卡片 - 选中时在底部展开 -->
     <transition name="expand">
-      <div v-if="isSelected" class="generator-card">
+      <div v-if="isSelected" class="generator-card" :class="{ expanded: isExpanded }">
+        <!-- 展开/收起按钮 -->
+        <button class="expand-btn" @click.stop="isExpanded = !isExpanded" :title="isExpanded ? '收起' : '展开'">
+          <svg v-if="!isExpanded" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <polyline points="9 21 3 21 3 15"></polyline>
+            <line x1="21" y1="3" x2="14" y2="10"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          </svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="4 14 10 14 10 20"></polyline>
+            <polyline points="20 10 14 10 14 4"></polyline>
+            <line x1="14" y1="10" x2="21" y2="3"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          </svg>
+        </button>
+
         <div class="generator-content">
           <!-- 视频节点选项卡 -->
           <div v-if="type === 'ai-video'" class="generator-tabs">
@@ -111,6 +127,7 @@
             @click.stop="focusEditable"
             @mousedown.stop
             class="generator-input editable"
+            :class="{ expanded: isExpanded }"
             data-placeholder="描述你想要生成的画面内容，输入 @ 引用素材..."
           ></div>
 
@@ -257,6 +274,7 @@ const nodeStore = useNodeStore()
 
 const localPrompt = ref(props.data.prompt || '')
 const isSelected = computed(() => nodeStore.selectedNodeId === props.id)
+const isExpanded = ref(false) // 卡片展开状态
 const currentTab = ref('text-to-video')
 const selectedRatio = ref('16:9')
 const selectedModel = ref('seedance-2.0')
