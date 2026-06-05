@@ -82,7 +82,7 @@ const isValidConnection = (connection: any) => {
 
 // 节点拖动时检测对齐
 const onNodeDrag = ({ node }: { node: Node }) => {
-  const lines: Array<{ id: string; type: 'horizontal' | 'vertical'; position: number }> = []
+  const lines: Array<{ id: string; type: 'horizontal' | 'vertical'; position: number; distance: number }> = []
 
   // 获取当前节点的边界
   const currentNode = node
@@ -105,29 +105,50 @@ const onNodeDrag = ({ node }: { node: Node }) => {
     const otherCenterY = otherTop + (otherNode.dimensions?.height || 0) / 2
 
     // 检测垂直对齐（左边、右边、中心）
-    if (Math.abs(currentLeft - otherLeft) < ALIGNMENT_THRESHOLD) {
-      lines.push({ id: `v-left-${otherNode.id}`, type: 'vertical', position: otherLeft })
+    const leftDist = Math.abs(currentLeft - otherLeft)
+    if (leftDist < ALIGNMENT_THRESHOLD) {
+      lines.push({ id: `v-left-${otherNode.id}`, type: 'vertical', position: otherLeft, distance: leftDist })
     }
-    if (Math.abs(currentRight - otherRight) < ALIGNMENT_THRESHOLD) {
-      lines.push({ id: `v-right-${otherNode.id}`, type: 'vertical', position: otherRight })
+    const rightDist = Math.abs(currentRight - otherRight)
+    if (rightDist < ALIGNMENT_THRESHOLD) {
+      lines.push({ id: `v-right-${otherNode.id}`, type: 'vertical', position: otherRight, distance: rightDist })
     }
-    if (Math.abs(currentCenterX - otherCenterX) < ALIGNMENT_THRESHOLD) {
-      lines.push({ id: `v-center-${otherNode.id}`, type: 'vertical', position: otherCenterX })
+    const centerXDist = Math.abs(currentCenterX - otherCenterX)
+    if (centerXDist < ALIGNMENT_THRESHOLD) {
+      lines.push({ id: `v-center-${otherNode.id}`, type: 'vertical', position: otherCenterX, distance: centerXDist })
     }
 
     // 检测水平对齐（上边、下边、中心）
-    if (Math.abs(currentTop - otherTop) < ALIGNMENT_THRESHOLD) {
-      lines.push({ id: `h-top-${otherNode.id}`, type: 'horizontal', position: otherTop })
+    const topDist = Math.abs(currentTop - otherTop)
+    if (topDist < ALIGNMENT_THRESHOLD) {
+      lines.push({ id: `h-top-${otherNode.id}`, type: 'horizontal', position: otherTop, distance: topDist })
     }
-    if (Math.abs(currentBottom - otherBottom) < ALIGNMENT_THRESHOLD) {
-      lines.push({ id: `h-bottom-${otherNode.id}`, type: 'horizontal', position: otherBottom })
+    const bottomDist = Math.abs(currentBottom - otherBottom)
+    if (bottomDist < ALIGNMENT_THRESHOLD) {
+      lines.push({ id: `h-bottom-${otherNode.id}`, type: 'horizontal', position: otherBottom, distance: bottomDist })
     }
-    if (Math.abs(currentCenterY - otherCenterY) < ALIGNMENT_THRESHOLD) {
-      lines.push({ id: `h-center-${otherNode.id}`, type: 'horizontal', position: otherCenterY })
+    const centerYDist = Math.abs(currentCenterY - otherCenterY)
+    if (centerYDist < ALIGNMENT_THRESHOLD) {
+      lines.push({ id: `h-center-${otherNode.id}`, type: 'horizontal', position: otherCenterY, distance: centerYDist })
     }
   })
 
-  alignmentLines.value = lines
+  // 去重：相同位置的线只保留一条（位置相近认为是同一条线）
+  const uniqueLines = new Map<string, typeof lines[0]>()
+  lines.forEach(line => {
+    const key = `${line.type}-${Math.round(line.position)}`
+    const existing = uniqueLines.get(key)
+    // 保留距离最近的那条线
+    if (!existing || line.distance < existing.distance) {
+      uniqueLines.set(key, line)
+    }
+  })
+
+  // 只显示最近的几条线（横竖各1条）
+  const horizontalLines = Array.from(uniqueLines.values()).filter(l => l.type === 'horizontal').sort((a, b) => a.distance - b.distance).slice(0, 1)
+  const verticalLines = Array.from(uniqueLines.values()).filter(l => l.type === 'vertical').sort((a, b) => a.distance - b.distance).slice(0, 1)
+
+  alignmentLines.value = [...horizontalLines, ...verticalLines]
 }
 
 // 拖动结束清除辅助线
