@@ -99,8 +99,7 @@
                 @change="handleFileUpload"
                 style="display: none"
               />
-              <span class="upload-icon">📤</span>
-              <span>上传素材</span>
+              <div class="upload-icon">+</div>
             </label>
           </div>
 
@@ -950,11 +949,12 @@ const statusText = computed(() => {
 
 .upload-prompt-btn {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
   cursor: pointer;
-  color: #888;
+  color: rgba(0, 217, 255, 0.5);
   transition: color 0.2s;
 }
 
@@ -964,10 +964,6 @@ const statusText = computed(() => {
 
 .upload-prompt-btn .upload-icon {
   font-size: 32px;
-}
-
-.upload-prompt-btn span:last-child {
-  font-size: 11px;
 }
 
 /* @ 提及列表 */
