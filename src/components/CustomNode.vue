@@ -825,11 +825,11 @@ const statusText = computed(() => {
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   z-index: 10;
-  transition: width 0.3s ease;
+  transition: all 0.3s ease;
 }
 
 .generator-card.expanded {
-  width: 600px;
+  width: 400px;
 }
 
 /* 展开按钮 */
@@ -1153,12 +1153,12 @@ const statusText = computed(() => {
   word-wrap: break-word;
   cursor: text;
   min-height: 80px;
-  max-height: 150px;
+  max-height: 80px;
   transition: max-height 0.3s ease;
 }
 
 .generator-input.editable.expanded {
-  max-height: 300px;
+  max-height: 400px;
 }
 
 .generator-input.editable * {
