@@ -95,6 +95,7 @@ const selectedResolution = ref('1080P')
 const selectedDuration = ref(15) // 改为数字
 
 const ratioOptions: RatioOption[] = [
+  { label: 'Auto', value: 'auto', aspect: '16/9', icon: '⚡' },
   { label: '16:9', value: '16:9', aspect: '16/9', icon: '▭' },
   { label: '9:16', value: '9:16', aspect: '9/16', icon: '▯' },
   { label: '1:1', value: '1:1', aspect: '1/1', icon: '□' },
@@ -212,7 +213,7 @@ onUnmounted(() => {
 
 .ratio-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 8px;
 }
 
