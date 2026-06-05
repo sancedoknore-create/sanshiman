@@ -210,7 +210,7 @@
 
               <!-- 图片节点：模型 + 比例 + 风格选择器 -->
               <template v-else-if="type === 'ai-image'">
-                <ModelSelector v-model="selectedModel" :models="imageModels" />
+                <ModelSelector v-model="selectedModel" :models="availableImageModels" />
                 <RatioSelector v-model="selectedRatio" :capabilities="imageRatioCapabilities" />
                 <StyleSelector v-model="selectedStyle" />
               </template>
@@ -334,6 +334,7 @@ import RatioSelector from './RatioSelector.vue'
 import ModelSelector from './ModelSelector.vue'
 import StyleSelector from './StyleSelector.vue'
 import { getVideoModels, type VideoModel } from '@/services/videoModelService'
+import { getImageModels, type ImageModel } from '@/services/imageModelService'
 
 interface Props {
   id: string
