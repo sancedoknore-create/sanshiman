@@ -19,19 +19,6 @@
           <!-- 其他节点 - 使用emoji -->
           <span v-else>{{ icon }}</span>
         </div>
-
-        <div class="node-title-main">{{ data.label }}</div>
-        <div class="node-hint">尝试：</div>
-        <div class="node-actions">
-          <button class="node-action-btn" @click.stop>
-            <span class="action-icon">{{ type === 'ai-image' ? '🎨' : '🎬' }}</span>
-            <span>{{ type === 'ai-image' ? '文生图' : '文生视频' }}</span>
-          </button>
-          <button class="node-action-btn" @click.stop>
-            <span class="action-icon">📤</span>
-            <span>{{ type === 'ai-image' ? '上传图片' : '上传视频' }}</span>
-          </button>
-        </div>
       </div>
 
       <!-- 状态指示 -->
