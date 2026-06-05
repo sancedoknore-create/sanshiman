@@ -104,7 +104,7 @@
             </label>
           </div>
 
-          <!-- 提示词输入 - 使用普通textarea，后续改进可视化 -->
+          <!-- 提示词输入 -->
           <textarea
             ref="textareaRef"
             v-model="localPrompt"
@@ -116,6 +116,27 @@
             class="generator-input"
             rows="3"
           ></textarea>
+
+          <!-- 已引用的素材预览 -->
+          <div v-if="referencedAssets.length > 0" class="referenced-assets">
+            <div class="referenced-label">已引用素材：</div>
+            <div class="referenced-list">
+              <div
+                v-for="asset in referencedAssets"
+                :key="asset.id"
+                class="referenced-item"
+              >
+                <div class="referenced-thumbnail">
+                  <img v-if="asset.type === 'image'" :src="asset.url" alt="" />
+                  <video v-else-if="asset.type === 'video'" :src="asset.url" />
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                  </svg>
+                </div>
+                <span class="referenced-name">{{ asset.name }}</span>
+              </div>
+            </div>
+          </div>
 
           <!-- @ 提及素材列表 -->
           <transition name="mention">
@@ -353,6 +374,25 @@ const filteredAssets = computed(() => {
   return allAssets.value.filter(asset =>
     asset.name.toLowerCase().includes(mentionFilter.value.toLowerCase())
   )
+})
+
+// 获取提示词中已引用的素材
+const referencedAssets = computed(() => {
+  if (!localPrompt.value) return []
+
+  const mentionRegex = /@\[([^\]]+)\]\(([^)]+)\)/g
+  const references: any[] = []
+  let match
+
+  while ((match = mentionRegex.exec(localPrompt.value)) !== null) {
+    const assetId = match[2]
+    const asset = allAssets.value.find(a => a.id === assetId)
+    if (asset && !references.find(r => r.id === asset.id)) {
+      references.push(asset)
+    }
+  }
+
+  return references
 })
 
 // 处理文件上传
@@ -946,6 +986,69 @@ const statusText = computed(() => {
 
 .generator-input::placeholder {
   color: #666;
+}
+
+/* 已引用素材 */
+.referenced-assets {
+  margin-bottom: 12px;
+  padding: 8px;
+  background: rgba(0, 217, 255, 0.05);
+  border: 1px solid rgba(0, 217, 255, 0.2);
+  border-radius: 8px;
+}
+
+.referenced-label {
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 6px;
+}
+
+.referenced-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.referenced-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(0, 217, 255, 0.1);
+  border: 1px solid rgba(0, 217, 255, 0.3);
+  border-radius: 6px;
+}
+
+.referenced-thumbnail {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.referenced-thumbnail img,
+.referenced-thumbnail video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.referenced-thumbnail svg {
+  color: #00D9FF;
+}
+
+.referenced-name {
+  font-size: 12px;
+  color: #00D9FF;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .generator-footer {
