@@ -267,6 +267,42 @@ const hasAnyInput = computed(() => {
   return nodeStore.edges.some(edge => edge.target === props.id)
 })
 
+// 获取连接的源节点的输出图片
+const connectedAssets = computed(() => {
+  const incomingEdges = nodeStore.edges.filter(edge => edge.target === props.id)
+  const assets: Array<{ id: string; type: 'image' | 'video' | 'audio'; url: string; name: string; fromNode: boolean }> = []
+
+  incomingEdges.forEach(edge => {
+    const sourceNode = nodeStore.nodes.find(n => n.id === edge.source)
+    if (sourceNode?.data?.outputImage) {
+      // 如果源节点有输出图片
+      assets.push({
+        id: `node_${sourceNode.id}`,
+        type: 'image',
+        url: sourceNode.data.outputImage,
+        name: sourceNode.data.label || '节点输出',
+        fromNode: true // 标记为来自节点的素材
+      })
+    } else if (sourceNode?.data?.outputVideo) {
+      // 如果源节点有输出视频
+      assets.push({
+        id: `node_${sourceNode.id}`,
+        type: 'video',
+        url: sourceNode.data.outputVideo,
+        name: sourceNode.data.label || '节点输出',
+        fromNode: true
+      })
+    }
+  })
+
+  return assets
+})
+
+// 合并上传的素材和连接的素材
+const allAssets = computed(() => {
+  return [...connectedAssets.value, ...uploadedAssets.value]
+})
+
 // 视频节点选项卡 - 根据输入动态启用
 const videoTabs = computed(() => [
   { label: '文生视频', value: 'text-to-video', disabled: hasAnyInput.value }, // 有输入时禁用
