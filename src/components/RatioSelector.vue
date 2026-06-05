@@ -44,17 +44,20 @@
         </div>
 
         <div class="dropdown-section">
-          <div class="section-title">时长</div>
-          <div class="duration-list">
-            <button
-              v-for="dur in durations"
-              :key="dur"
-              class="duration-option"
-              :class="{ active: selectedDuration === dur }"
-              @click.stop="selectedDuration = dur"
-            >
-              {{ dur }}
-            </button>
+          <div class="section-title">时长 ({{ selectedDuration }}秒)</div>
+          <div class="duration-slider">
+            <input
+              type="range"
+              v-model.number="selectedDuration"
+              :min="minDuration"
+              :max="maxDuration"
+              step="1"
+              class="slider"
+            />
+            <div class="slider-labels">
+              <span>{{ minDuration }}s</span>
+              <span>{{ maxDuration }}s</span>
+            </div>
           </div>
         </div>
       </div>
@@ -87,7 +90,7 @@ const emit = defineEmits<{
 const isOpen = ref(false)
 const selectorRef = ref<HTMLElement>()
 const selectedResolution = ref('1080P')
-const selectedDuration = ref('15s')
+const selectedDuration = ref(15) // 改为数字
 
 const ratioOptions: RatioOption[] = [
   { label: '16:9', value: '16:9', aspect: '16/9', icon: '▭' },
@@ -98,7 +101,8 @@ const ratioOptions: RatioOption[] = [
 ]
 
 const resolutions = ['720P', '1080P', '2K', '4K']
-const durations = ['5s', '10s', '15s', '30s', '60s']
+const minDuration = 4
+const maxDuration = 15
 
 const selectedOption = computed(() => {
   return ratioOptions.find(opt => opt.value === props.modelValue) || ratioOptions[0]
@@ -106,7 +110,7 @@ const selectedOption = computed(() => {
 
 const selectedIcon = computed(() => selectedOption.value.icon)
 const selectedLabel = computed(() => {
-  return `${selectedOption.value.label} · ${selectedResolution.value} · ${selectedDuration.value}`
+  return `${selectedOption.value.label} · ${selectedResolution.value} · ${selectedDuration.value}s`
 })
 
 function toggle() {
