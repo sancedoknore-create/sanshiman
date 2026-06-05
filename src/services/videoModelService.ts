@@ -2,11 +2,26 @@
  * API服务 - 管理视频模型
  */
 
+export interface VideoModelCapabilities {
+  // 支持的比例
+  ratios?: string[] // 如 ['auto', '16:9', '9:16', '1:1', '4:3', '3:4', '21:9']
+  // 支持的分辨率
+  resolutions?: string[] // 如 ['480P', '720P', '1080P']
+  // 时长范围
+  durationRange?: {
+    min: number // 最小秒数
+    max: number // 最大秒数
+  }
+  // 是否支持音频生成
+  audioGeneration?: boolean
+}
+
 export interface VideoModel {
   id: string
   name: string
   description: string
   badge?: string
+  capabilities?: VideoModelCapabilities // 模型能力
 }
 
 // 模型列表存储
@@ -15,12 +30,24 @@ let modelList: VideoModel[] = [
     id: 'seedance-2.0',
     name: 'Seedance 2.0',
     description: '高质量视频生成',
-    badge: 'VIP'
+    badge: 'VIP',
+    capabilities: {
+      ratios: ['auto', '16:9', '9:16', '1:1', '4:3', '3:4', '21:9'],
+      resolutions: ['480P', '720P', '1080P'],
+      durationRange: { min: 4, max: 15 },
+      audioGeneration: true
+    }
   },
   {
     id: 'seedance-1.5',
     name: 'Seedance 1.5',
     description: '快速生成',
+    capabilities: {
+      ratios: ['16:9', '9:16', '1:1'],
+      resolutions: ['480P', '720P'],
+      durationRange: { min: 4, max: 10 },
+      audioGeneration: false
+    }
   },
 ]
 
