@@ -310,19 +310,20 @@ const onNodeClick = (event: { event: MouseEvent; node: Node }) => {
 // 键盘删除
 onMounted(() => {
   const handleKeyDown = (event: KeyboardEvent) => {
-    // 如果焦点在输入元素中，不处理删除
-    const target = event.target as HTMLElement
+    // 只允许Delete键删除节点，禁用Backspace
+    if (event.key === 'Delete') {
+      // 如果焦点在输入元素中，不处理删除
+      const target = event.target as HTMLElement
 
-    // 检查目标元素本身或其父元素是否为输入元素
-    if (target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable ||
-        target.closest('[contenteditable="true"]') ||
-        target.closest('.generator-input')) {
-      return
-    }
+      // 检查目标元素本身或其父元素是否为输入元素
+      if (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable ||
+          target.closest('[contenteditable="true"]') ||
+          target.closest('.generator-input')) {
+        return
+      }
 
-    if (event.key === 'Delete' || event.key === 'Backspace') {
       if (nodeStore.selectedNodeId) {
         nodeStore.removeNode(nodeStore.selectedNodeId)
         // showProperties.value = false
