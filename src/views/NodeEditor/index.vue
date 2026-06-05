@@ -168,7 +168,7 @@ const onNodeDragStop = () => {
 const nodes = ref<Node[]>([])
 const edges = ref<Edge[]>([])
 
-const { project, onConnect } = useVueFlow({
+const { project, onConnect, setNodes, setEdges } = useVueFlow({
   nodeTypes: {
     'ai-image': markRaw(CustomNode),
     'ai-video': markRaw(CustomNode),
@@ -258,14 +258,17 @@ onMounted(() => {
   const router = useRouter()
 
   if (route.query.newProject === 'true') {
-    // 清空画布创建全新项目
+    // 清空所有数据
     nodeStore.nodes.splice(0, nodeStore.nodes.length)
     nodeStore.edges.splice(0, nodeStore.edges.length)
+    nodes.value = []
+    edges.value = []
+    setNodes([])
+    setEdges([])
 
     // 设置项目名称
     if (route.query.name) {
       const projectName = decodeURIComponent(route.query.name as string)
-      // 通过事件或store保存项目名称
       ;(window as any).__projectName = projectName
       window.dispatchEvent(new CustomEvent('project-name-change', { detail: projectName }))
     }
