@@ -541,7 +541,7 @@ const filteredAssets = computed(() => {
 })
 
 // 初始化
-onMounted(() => {
+onMounted(async () => {
   if (editableRef.value && localPrompt.value) {
     editableRef.value.textContent = localPrompt.value
   }
