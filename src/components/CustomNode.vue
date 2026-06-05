@@ -55,10 +55,13 @@
 
           <div class="generator-footer">
             <div class="generator-options">
-              <!-- 视频节点使用比例选择器 -->
-              <RatioSelector v-if="type === 'ai-video'" v-model="selectedRatio" />
+              <!-- 视频节点：模型选择器 + 比例选择器 -->
+              <template v-if="type === 'ai-video'">
+                <ModelSelector v-model="selectedModel" />
+                <RatioSelector v-model="selectedRatio" />
+              </template>
 
-              <!-- 图片节点使用简单按钮 -->
+              <!-- 图片节点：简单按钮 -->
               <button v-else class="option-btn">
                 <span>1024x1024</span>
                 <span class="chevron">▼</span>
@@ -94,6 +97,7 @@ import { ref, computed, watch } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
 import { useNodeStore } from '@/stores/node'
 import RatioSelector from './RatioSelector.vue'
+import ModelSelector from './ModelSelector.vue'
 
 interface Props {
   id: string
@@ -113,6 +117,7 @@ const localPrompt = ref(props.data.prompt || '')
 const isSelected = computed(() => nodeStore.selectedNodeId === props.id)
 const currentTab = ref('text-to-video')
 const selectedRatio = ref('16:9')
+const selectedModel = ref('seedance-2.0')
 
 // 根据比例计算节点尺寸
 const nodeSize = computed(() => {
