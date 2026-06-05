@@ -251,9 +251,9 @@ const statusText = computed(() => {
 .generator-card {
   position: absolute;
   top: calc(100% + 16px);
-  left: 0;
-  width: 100%;
-  min-width: 640px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 640px;
   background: #262626;
   border: 1px solid rgba(0, 217, 255, 0.3);
   border-radius: 12px;
