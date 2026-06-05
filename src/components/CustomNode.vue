@@ -359,9 +359,8 @@ const selectedStyle = ref('realistic')
 // 图片节点的比例能力（不限制时长和音频）
 const imageRatioCapabilities = {
   ratios: ['1:1', '16:9', '9:16', '4:3', '3:4', '21:9', '3:2', '2:3'],
-  resolutions: ['512p', '1024p', '2K'],
-  hasAudio: false,
-  maxDuration: 0,
+  resolutions: ['1K', '2K', '4K'],
+  audioGeneration: false,
 }
 const availableModels = ref<VideoModel[]>([])
 const uploadedAssets = ref<Array<{ id: string; type: 'image' | 'video' | 'audio'; url: string; name: string }>>([])
