@@ -111,7 +111,6 @@
             @input="handleContentEdit"
             @keydown="handleKeyDown"
             @click.stop
-            @focus="() => {}"
             class="generator-input editable"
             data-placeholder="描述你想要生成的画面内容，输入 @ 引用素材..."
             tabindex="0"
@@ -343,6 +342,7 @@ const checkForMention = (div: HTMLDivElement) => {
 
 // 处理按键
 const handleKeyDown = (event: KeyboardEvent) => {
+  // 只阻止冒泡，不阻止默认行为
   event.stopPropagation()
 }
 
