@@ -1,8 +1,8 @@
 <template>
   <div class="node-editor">
     <VueFlow
-      v-model:nodes="nodeStore.nodes"
-      v-model:edges="nodeStore.edges"
+      v-model:nodes="nodes"
+      v-model:edges="edges"
       :default-viewport="{ zoom: 1, x: 0, y: 0 }"
       :min-zoom="0.1"
       :max-zoom="4"
@@ -40,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, markRaw, onMounted } from 'vue'
+import { ref, reactive, markRaw, onMounted, watch } from 'vue'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
@@ -55,6 +55,10 @@ import { useNodeStore } from '@/stores/node'
 const nodeStore = useNodeStore()
 const showProperties = ref(false)
 
+// 使用本地ref来绑定Vue Flow
+const nodes = ref<Node[]>([])
+const edges = ref<Edge[]>([])
+
 const { project, onConnect } = useVueFlow({
   nodeTypes: {
     'ai-image': markRaw(CustomNode),
@@ -67,6 +71,25 @@ const { project, onConnect } = useVueFlow({
     'animated': markRaw(AnimatedEdge),
   },
 })
+
+// 同步nodeStore到本地nodes
+watch(() => nodeStore.nodes, (newNodes) => {
+  nodes.value = newNodes
+}, { deep: true, immediate: true })
+
+watch(() => nodeStore.edges, (newEdges) => {
+  edges.value = newEdges
+}, { deep: true, immediate: true })
+
+// 同步本地nodes的位置变化回nodeStore
+watch(nodes, (newNodes) => {
+  newNodes.forEach(node => {
+    const storeNode = nodeStore.nodes.find(n => n.id === node.id)
+    if (storeNode && (storeNode.position.x !== node.position.x || storeNode.position.y !== node.position.y)) {
+      storeNode.position = { ...node.position }
+    }
+  })
+}, { deep: true })
 
 // 监听连线创建
 onConnect((connection) => {
