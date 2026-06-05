@@ -6,7 +6,7 @@ export interface VideoModelCapabilities {
   // 支持的比例
   ratios?: string[] // 如 ['auto', '16:9', '9:16', '1:1', '4:3', '3:4', '21:9']
   // 支持的分辨率
-  resolutions?: string[] // 如 ['480P', '720P', '1080P']
+  resolutions?: string[] // 如 ['1K', '2K', '4K']
   // 时长范围
   durationRange?: {
     min: number // 最小秒数
@@ -33,7 +33,7 @@ let modelList: VideoModel[] = [
     badge: 'VIP',
     capabilities: {
       ratios: ['auto', '16:9', '9:16', '1:1', '4:3', '3:4', '21:9'],
-      resolutions: ['480P', '720P', '1080P'],
+      resolutions: ['1K', '2K', '4K'],
       durationRange: { min: 4, max: 15 },
       audioGeneration: true
     }
@@ -44,7 +44,7 @@ let modelList: VideoModel[] = [
     description: '快速生成',
     capabilities: {
       ratios: ['16:9', '9:16', '1:1'],
-      resolutions: ['480P', '720P'],
+      resolutions: ['1K', '2K'],
       durationRange: { min: 4, max: 10 },
       audioGeneration: false
     }
@@ -104,7 +104,7 @@ export async function loadModelsFromAPI(): Promise<VideoModel[]> {
         badge: 'VIP',
         capabilities: {
           ratios: ['auto', '16:9', '9:16', '1:1', '4:3', '3:4', '21:9'],
-          resolutions: ['480P', '720P', '1080P'],
+          resolutions: ['1K', '2K', '4K'],
           durationRange: { min: 4, max: 15 },
           audioGeneration: true
         }
@@ -115,7 +115,7 @@ export async function loadModelsFromAPI(): Promise<VideoModel[]> {
         description: '快速生成',
         capabilities: {
           ratios: ['16:9', '9:16', '1:1'],
-          resolutions: ['480P', '720P'],
+          resolutions: ['1K', '2K'],
           durationRange: { min: 4, max: 10 },
           audioGeneration: false
         }
@@ -127,7 +127,7 @@ export async function loadModelsFromAPI(): Promise<VideoModel[]> {
         badge: 'PRO',
         capabilities: {
           ratios: ['16:9', '21:9'],
-          resolutions: ['720P', '1080P'],
+          resolutions: ['2K', '4K'],
           durationRange: { min: 5, max: 10 },
           audioGeneration: true
         }
@@ -138,7 +138,7 @@ export async function loadModelsFromAPI(): Promise<VideoModel[]> {
         description: '创意风格',
         capabilities: {
           ratios: ['16:9', '9:16', '1:1', '4:3'],
-          resolutions: ['480P', '720P'],
+          resolutions: ['1K', '2K'],
           durationRange: { min: 3, max: 8 },
           audioGeneration: false
         }
