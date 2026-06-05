@@ -105,14 +105,45 @@
           </div>
 
           <textarea
+            ref="textareaRef"
             v-model="localPrompt"
+            @input="handlePromptInput"
             @change="updatePrompt"
             @click.stop
             @keydown.stop
-            placeholder="描述你想要生成的画面内容..."
+            placeholder="描述你想要生成的画面内容，输入 @ 引用素材..."
             class="generator-input"
             rows="3"
           ></textarea>
+
+          <!-- @ 提及素材列表 -->
+          <transition name="mention">
+            <div
+              v-if="showAssetMention && filteredAssets.length > 0"
+              class="asset-mention-list"
+              :style="{ top: mentionPosition.top + 'px', left: mentionPosition.left + 'px' }"
+              @click.stop
+            >
+              <div
+                v-for="asset in filteredAssets"
+                :key="asset.id"
+                class="mention-item"
+                @click="insertAssetMention(asset)"
+              >
+                <div class="mention-thumbnail">
+                  <img v-if="asset.type === 'image'" :src="asset.url" alt="" />
+                  <video v-else-if="asset.type === 'video'" :src="asset.url" />
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                  </svg>
+                </div>
+                <div class="mention-info">
+                  <div class="mention-name">{{ asset.name }}</div>
+                  <div class="mention-type">{{ asset.type }}</div>
+                </div>
+              </div>
+            </div>
+          </transition>
 
           <div class="generator-footer">
             <div class="generator-options">
@@ -186,6 +217,77 @@ const selectedRatio = ref('16:9')
 const selectedModel = ref('seedance-2.0')
 const availableModels = ref<VideoModel[]>([])
 const uploadedAssets = ref<Array<{ id: string; type: 'image' | 'video' | 'audio'; url: string; name: string }>>([])
+
+// @ 提及功能
+const showAssetMention = ref(false)
+const mentionPosition = ref({ top: 0, left: 0 })
+const mentionFilter = ref('')
+const textareaRef = ref<HTMLTextAreaElement>()
+
+// 处理输入框输入
+const handlePromptInput = (event: Event) => {
+  const textarea = event.target as HTMLTextAreaElement
+  const cursorPos = textarea.selectionStart
+  const textBeforeCursor = textarea.value.substring(0, cursorPos)
+
+  // 检测 @ 符号
+  const lastAtIndex = textBeforeCursor.lastIndexOf('@')
+  if (lastAtIndex !== -1) {
+    const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1)
+    // 如果 @ 后面没有空格，显示提及列表
+    if (!textAfterAt.includes(' ') && !textAfterAt.includes('\n')) {
+      mentionFilter.value = textAfterAt
+      showAssetMention.value = true
+
+      // 计算弹出位置
+      const rect = textarea.getBoundingClientRect()
+      mentionPosition.value = {
+        top: rect.top - 200, // 在输入框上方
+        left: rect.left
+      }
+    } else {
+      showAssetMention.value = false
+    }
+  } else {
+    showAssetMention.value = false
+  }
+}
+
+// 插入素材引用
+const insertAssetMention = (asset: any) => {
+  if (!textareaRef.value) return
+
+  const textarea = textareaRef.value
+  const cursorPos = textarea.selectionStart
+  const textBeforeCursor = textarea.value.substring(0, cursorPos)
+  const textAfterCursor = textarea.value.substring(cursorPos)
+
+  // 找到最后一个 @
+  const lastAtIndex = textBeforeCursor.lastIndexOf('@')
+  if (lastAtIndex !== -1) {
+    const beforeAt = textBeforeCursor.substring(0, lastAtIndex)
+    const mentionTag = `@[${asset.name}](${asset.id})`
+    localPrompt.value = beforeAt + mentionTag + textAfterCursor
+
+    // 更新光标位置
+    const newCursorPos = (beforeAt + mentionTag).length
+    setTimeout(() => {
+      textarea.focus()
+      textarea.setSelectionRange(newCursorPos, newCursorPos)
+    }, 0)
+  }
+
+  showAssetMention.value = false
+  updatePrompt()
+}
+
+// 过滤素材列表
+const filteredAssets = computed(() => {
+  if (!mentionFilter.value) return allAssets.value
+  return allAssets.value.filter(asset =>
+    asset.name.toLowerCase().includes(mentionFilter.value.toLowerCase())
+  )
+})
 
 // 处理文件上传
 const handleFileUpload = (event: Event) => {
