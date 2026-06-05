@@ -1118,6 +1118,13 @@ const statusText = computed(() => {
   white-space: pre-wrap;
   word-wrap: break-word;
   cursor: text;
+  min-height: 80px;
+  max-height: 150px;
+  transition: max-height 0.3s ease;
+}
+
+.generator-input.editable.expanded {
+  max-height: 300px;
 }
 
 .generator-input.editable * {
