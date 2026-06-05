@@ -54,6 +54,7 @@ import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 import type { Node, Edge } from '@vue-flow/core'
+import { useRoute, useRouter } from 'vue-router'
 import ContextMenu from '@/components/ContextMenu.vue'
 import CustomNode from '@/components/CustomNode.vue'
 import AnimatedEdge from '@/components/AnimatedEdge.vue'
@@ -252,6 +253,29 @@ onConnectEnd((event) => {
 
 // 初始化示例节点
 onMounted(() => {
+  // 检查是否有新建项目请求
+  const route = useRoute()
+  const router = useRouter()
+
+  if (route.query.newProject === 'true') {
+    // 清空画布创建全新项目
+    nodeStore.nodes.splice(0, nodeStore.nodes.length)
+    nodeStore.edges.splice(0, nodeStore.edges.length)
+
+    // 设置项目名称
+    if (route.query.name) {
+      const projectName = decodeURIComponent(route.query.name as string)
+      // 通过事件或store保存项目名称
+      ;(window as any).__projectName = projectName
+      window.dispatchEvent(new CustomEvent('project-name-change', { detail: projectName }))
+    }
+
+    // 清除URL参数避免刷新重复
+    router.replace({ path: '/nodes' })
+    return
+  }
+
+  // 默认初始化示例节点
   if (nodeStore.nodes.length === 0) {
     const node1: Node = {
       id: '1',

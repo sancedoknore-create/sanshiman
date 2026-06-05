@@ -59,7 +59,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAIStore } from '@/stores/ai'
 
@@ -71,6 +71,24 @@ const projectName = ref('未命名项目')
 const isEditingName = ref(false)
 const nameInputRef = ref<HTMLInputElement>()
 const previousName = ref('')
+
+// 监听项目名称变化事件
+const handleProjectNameChange = (event: Event) => {
+  const customEvent = event as CustomEvent
+  projectName.value = customEvent.detail
+}
+
+onMounted(() => {
+  window.addEventListener('project-name-change', handleProjectNameChange)
+  // 检查全局变量
+  if ((window as any).__projectName) {
+    projectName.value = (window as any).__projectName
+  }
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('project-name-change', handleProjectNameChange)
+})
 
 const startEditing = async () => {
   previousName.value = projectName.value
