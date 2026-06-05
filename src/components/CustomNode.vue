@@ -263,6 +263,19 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- 图片预览弹窗 -->
+    <Teleport to="body">
+      <div v-if="showImageModal" class="image-modal-overlay" @click="closeImage">
+        <div class="image-modal-content" @click.stop>
+          <button class="image-modal-close" @click="closeImage">×</button>
+          <img
+            :src="data.outputImage"
+            class="image-modal-preview"
+          />
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
