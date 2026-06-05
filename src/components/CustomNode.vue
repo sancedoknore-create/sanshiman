@@ -744,6 +744,33 @@ const statusText = computed(() => {
   font-size: 64px;
 }
 
+/* 素材预览 */
+.asset-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.audio-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+}
+
+.audio-preview svg {
+  color: rgba(0, 217, 255, 0.8);
+}
+
+.audio-controls {
+  width: 90%;
+  max-width: 300px;
+}
+
 .node-title-main {
   font-size: 16px;
   color: #ffffff;
