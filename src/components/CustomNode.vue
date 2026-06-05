@@ -236,11 +236,11 @@ const handlePromptInput = (event: Event) => {
   const lastAtIndex = textBeforeCursor.lastIndexOf('@')
   if (lastAtIndex !== -1) {
     const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1)
-    console.log('After @:', textAfterAt)
+    console.log('After @:', textAfterAt, 'Has assets:', allAssets.value.length > 0)
     // 如果 @ 后面没有空格，显示提及列表
     if (!textAfterAt.includes(' ') && !textAfterAt.includes('\n')) {
       mentionFilter.value = textAfterAt
-      showAssetMention.value = true
+      showAssetMention.value = allAssets.value.length > 0
 
       // 计算弹出位置
       const rect = textarea.getBoundingClientRect()
@@ -248,7 +248,10 @@ const handlePromptInput = (event: Event) => {
         top: rect.top - 200, // 在输入框上方
         left: rect.left
       }
-      console.log('Show mention list:', showAssetMention.value, 'Position:', mentionPosition.value)
+      console.log('Show mention list:', showAssetMention.value, 'FilteredAssets:', filteredAssets.value.length)
+    } else {
+      showAssetMention.value = false
+    }
     } else {
       showAssetMention.value = false
     }
@@ -759,7 +762,7 @@ const statusText = computed(() => {
   border: 1px solid rgba(0, 217, 255, 0.3);
   border-radius: 8px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
+  z-index: 10000;
   padding: 4px;
 }
 
