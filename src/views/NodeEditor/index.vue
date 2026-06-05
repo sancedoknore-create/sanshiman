@@ -310,6 +310,14 @@ const onNodeClick = (event: { event: MouseEvent; node: Node }) => {
 // 键盘删除
 onMounted(() => {
   const handleKeyDown = (event: KeyboardEvent) => {
+    // 如果焦点在输入元素中，不处理删除
+    const target = event.target as HTMLElement
+    if (target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable) {
+      return
+    }
+
     if (event.key === 'Delete' || event.key === 'Backspace') {
       if (nodeStore.selectedNodeId) {
         nodeStore.removeNode(nodeStore.selectedNodeId)
