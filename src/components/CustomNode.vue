@@ -31,6 +31,19 @@
     <transition name="expand">
       <div v-if="isSelected" class="generator-card">
         <div class="generator-content">
+          <!-- 视频节点选项卡 -->
+          <div v-if="type === 'ai-video'" class="generator-tabs">
+            <button
+              v-for="tab in videoTabs"
+              :key="tab.value"
+              :class="['tab-btn', { active: currentTab === tab.value, disabled: tab.disabled }]"
+              @click.stop="currentTab = tab.value"
+              :disabled="tab.disabled"
+            >
+              {{ tab.label }}
+            </button>
+          </div>
+
           <textarea
             v-model="localPrompt"
             @change="updatePrompt"
@@ -93,6 +106,16 @@ const nodeStore = useNodeStore()
 
 const localPrompt = ref(props.data.prompt || '')
 const isSelected = computed(() => nodeStore.selectedNodeId === props.id)
+const currentTab = ref('text-to-video')
+
+// 视频节点选项卡
+const videoTabs = [
+  { label: '文生视频', value: 'text-to-video', disabled: false },
+  { label: '全能参考', value: 'universal-ref', disabled: true },
+  { label: '图生视频', value: 'image-to-video', disabled: true },
+  { label: '首尾帧', value: 'first-last-frame', disabled: true },
+  { label: '图片参考', value: 'image-ref', disabled: true },
+]
 
 watch(() => props.data.prompt, (newPrompt) => {
   localPrompt.value = newPrompt || ''
@@ -263,6 +286,41 @@ const statusText = computed(() => {
 
 .generator-content {
   padding: 16px;
+}
+
+.generator-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 4px;
+  overflow-x: auto;
+}
+
+.tab-btn {
+  padding: 6px 16px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-btn.active {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #4a4a4a;
+}
+
+.tab-btn.disabled {
+  color: #666;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.tab-btn:not(.disabled):not(.active):hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .generator-input {
