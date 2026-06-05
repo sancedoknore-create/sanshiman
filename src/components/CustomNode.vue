@@ -104,38 +104,18 @@
             </label>
           </div>
 
-          <!-- 提示词输入区域 -->
-          <div class="prompt-area">
-            <!-- 富文本显示层 - 显示素材徽章 -->
-            <div class="prompt-display" @click="focusTextarea">
-              <template v-for="(part, index) in promptParts" :key="index">
-                <span v-if="part.type === 'text'">{{ part.content }}</span>
-                <span v-else-if="part.type === 'mention'" class="asset-badge">
-                  <img v-if="part.asset?.type === 'image'" :src="part.asset.url" alt="" class="badge-thumbnail" />
-                  <svg v-else-if="part.asset?.type === 'video'" class="badge-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-                    <path d="M4.66699 2.64248C4.66717 1.82358 5.59736 1.35167 6.25781 1.83584L13.5674 7.19619C14.1117 7.59579 14.1118 8.40897 13.5674 8.8085L6.25781 14.1688C5.59734 14.6528 4.6671 14.1811 4.66699 13.3622V2.64248Z"/>
-                  </svg>
-                  <svg v-else class="badge-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-                  </svg>
-                  <span class="badge-name">{{ part.asset?.name || '素材' }}</span>
-                </span>
-              </template>
-              <span v-if="!localPrompt" class="prompt-placeholder">描述你想要生成的画面内容，输入 @ 引用素材...</span>
-            </div>
-
-            <!-- 实际的textarea（隐藏） -->
-            <textarea
-              ref="textareaRef"
-              v-model="localPrompt"
-              @input="handlePromptInput"
-              @change="updatePrompt"
-              @click.stop
-              @keydown.stop
-              class="generator-input hidden-textarea"
-              rows="3"
-            ></textarea>
-          </div>
+          <!-- 提示词输入 - 使用普通textarea，后续改进可视化 -->
+          <textarea
+            ref="textareaRef"
+            v-model="localPrompt"
+            @input="handlePromptInput"
+            @change="updatePrompt"
+            @click.stop
+            @keydown.stop
+            placeholder="描述你想要生成的画面内容，输入 @ 引用素材..."
+            class="generator-input"
+            rows="3"
+          ></textarea>
 
           <!-- @ 提及素材列表 -->
           <transition name="mention">
@@ -956,92 +936,16 @@ const statusText = computed(() => {
   font-family: inherit;
   resize: none;
   margin-bottom: 12px;
+  line-height: 1.5;
+  outline: none;
 }
 
 .generator-input:focus {
-  outline: none;
   border-color: #00D9FF;
 }
 
 .generator-input::placeholder {
   color: #666;
-}
-
-/* 提示词区域 */
-.prompt-area {
-  position: relative;
-  margin-bottom: 16px;
-}
-
-.prompt-display {
-  width: 100%;
-  min-height: 80px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  color: #ffffff;
-  font-size: 14px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  cursor: text;
-  transition: border-color 0.2s;
-}
-
-.prompt-display:hover {
-  border-color: rgba(0, 217, 255, 0.3);
-}
-
-.prompt-placeholder {
-  color: #666;
-  pointer-events: none;
-}
-
-.hidden-textarea {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  pointer-events: none;
-  z-index: -1;
-}
-
-/* 素材徽章 */
-.asset-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  background: rgba(0, 217, 255, 0.15);
-  border: 1px solid rgba(0, 217, 255, 0.3);
-  border-radius: 12px;
-  color: #00D9FF;
-  font-size: 12px;
-  vertical-align: middle;
-  margin: 0 2px;
-}
-
-.badge-thumbnail {
-  width: 16px;
-  height: 16px;
-  border-radius: 2px;
-  object-fit: cover;
-}
-
-.badge-icon {
-  width: 12px;
-  height: 12px;
-  flex-shrink: 0;
-}
-
-.badge-name {
-  max-width: 100px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .generator-footer {
