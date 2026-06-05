@@ -333,7 +333,6 @@ const contextMenu = reactive<ContextMenuState>({
 
 // 画布右键菜单
 const onPaneContextMenu = (event: MouseEvent) => {
-  console.log('onPaneContextMenu triggered', event.clientX, event.clientY)
   event.preventDefault()
 
   contextMenu.visible = true
@@ -352,14 +351,12 @@ const onPaneContextMenu = (event: MouseEvent) => {
 
 // 处理原生右键事件（备用）
 const handleContextMenu = (event: MouseEvent) => {
-  console.log('handleContextMenu triggered', event.target)
   const target = event.target as HTMLElement
   // 只处理画布背景的右键，不处理节点
   if (target.classList.contains('vue-flow__pane') ||
       target.classList.contains('vue-flow__background') ||
       target.closest('.vue-flow__pane') ||
       target.closest('.vue-flow__background')) {
-    console.log('Calling onPaneContextMenu from handleContextMenu')
     onPaneContextMenu(event)
   }
 }
