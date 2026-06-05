@@ -801,7 +801,6 @@ const statusText = computed(() => {
   top: calc(100% + 16px);
   left: 50%;
   transform: translateX(-50%);
-  width: 400px;
   background: #262626;
   border: 1px solid rgba(0, 217, 255, 0.3);
   border-radius: 12px;
