@@ -369,6 +369,60 @@ onUnmounted(() => {
   color: #888;
 }
 
+.audio-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toggle-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 2px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.toggle-btn.active {
+  background: rgba(0, 217, 255, 0.1);
+  border-color: #00D9FF;
+}
+
+.toggle-option {
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+  color: #888;
+  z-index: 1;
+  transition: color 0.3s;
+}
+
+.toggle-option.active {
+  color: #ffffff;
+}
+
+.toggle-indicator {
+  position: absolute;
+  left: 2px;
+  width: calc(50% - 2px);
+  height: calc(100% - 4px);
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  transition: all 0.3s;
+}
+
+.toggle-indicator.active {
+  left: calc(50% + 2px);
+  background: #00D9FF;
+  box-shadow: 0 0 8px rgba(0, 217, 255, 0.5);
+}
+
 /* 下拉动画 - 向上弹出 */
 .dropdown-enter-active,
 .dropdown-leave-active {
