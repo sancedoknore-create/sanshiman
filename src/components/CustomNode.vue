@@ -189,6 +189,53 @@
   </div>
 </template>
 
+<style>
+/* 全局样式 - 用于动态创建的徽章元素 */
+.asset-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 2px 8px !important;
+  background: rgba(0, 217, 255, 0.15) !important;
+  border: 1px solid rgba(0, 217, 255, 0.3) !important;
+  border-radius: 12px !important;
+  color: #00D9FF !important;
+  font-size: 12px !important;
+  vertical-align: middle !important;
+  margin: 0 2px !important;
+  cursor: default !important;
+  user-select: none !important;
+  max-height: 24px !important;
+}
+
+.asset-badge img,
+.badge-thumbnail {
+  width: 16px !important;
+  height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  object-fit: cover !important;
+  border-radius: 2px !important;
+  flex-shrink: 0 !important;
+  display: block !important;
+}
+
+.badge-icon {
+  width: 12px !important;
+  height: 12px !important;
+  flex-shrink: 0 !important;
+}
+
+.badge-name {
+  max-width: 100px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+</style>
+
 <script setup lang="ts">
 import { ref, computed, watch, provide, onMounted } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
