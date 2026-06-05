@@ -230,10 +230,13 @@ const handlePromptInput = (event: Event) => {
   const cursorPos = textarea.selectionStart
   const textBeforeCursor = textarea.value.substring(0, cursorPos)
 
+  console.log('Input:', textBeforeCursor, 'Assets:', allAssets.value.length)
+
   // 检测 @ 符号
   const lastAtIndex = textBeforeCursor.lastIndexOf('@')
   if (lastAtIndex !== -1) {
     const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1)
+    console.log('After @:', textAfterAt)
     // 如果 @ 后面没有空格，显示提及列表
     if (!textAfterAt.includes(' ') && !textAfterAt.includes('\n')) {
       mentionFilter.value = textAfterAt
@@ -245,6 +248,7 @@ const handlePromptInput = (event: Event) => {
         top: rect.top - 200, // 在输入框上方
         left: rect.left
       }
+      console.log('Show mention list:', showAssetMention.value, 'Position:', mentionPosition.value)
     } else {
       showAssetMention.value = false
     }
@@ -743,6 +747,92 @@ const statusText = computed(() => {
 
 .upload-prompt-btn span:last-child {
   font-size: 14px;
+}
+
+/* @ 提及列表 */
+.asset-mention-list {
+  position: fixed;
+  width: 300px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: #262626;
+  border: 1px solid rgba(0, 217, 255, 0.3);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  padding: 4px;
+}
+
+.mention-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.mention-item:hover {
+  background: rgba(0, 217, 255, 0.1);
+}
+
+.mention-thumbnail {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mention-thumbnail img,
+.mention-thumbnail video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mention-thumbnail svg {
+  color: #00D9FF;
+}
+
+.mention-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mention-name {
+  font-size: 13px;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mention-type {
+  font-size: 11px;
+  color: #888;
+  text-transform: capitalize;
+}
+
+/* 提及动画 */
+.mention-enter-active,
+.mention-leave-active {
+  transition: all 0.2s ease;
+}
+
+.mention-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.mention-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
 }
 
 .tab-btn {
