@@ -7,8 +7,9 @@
       @contextmenu.prevent
     >
       <div
+        ref="menuRef"
         class="context-menu"
-        :style="{ left: x + 'px', top: y + 'px' }"
+        :style="menuStyle"
         @click.stop
       >
         <div
@@ -26,6 +27,8 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref, onMounted, nextTick, watch } from 'vue'
+
 interface MenuItem {
   label: string
   icon: string
@@ -39,7 +42,7 @@ interface Props {
   visible?: boolean
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   visible: true,
 })
 
@@ -47,6 +50,50 @@ defineEmits<{
   select: [action: string]
   close: []
 }>()
+
+const menuRef = ref<HTMLElement>()
+
+// 计算菜单位置，防止超出视口
+const menuStyle = computed(() => {
+  let left = props.x
+  let top = props.y
+
+  // 如果菜单已渲染，检查是否超出视口
+  if (menuRef.value) {
+    const menuWidth = menuRef.value.offsetWidth
+    const menuHeight = menuRef.value.offsetHeight
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
+
+    // 右侧超出，向左调整
+    if (left + menuWidth > viewportWidth) {
+      left = viewportWidth - menuWidth - 10
+    }
+
+    // 底部超出，向上调整
+    if (top + menuHeight > viewportHeight) {
+      top = viewportHeight - menuHeight - 10
+    }
+
+    // 确保不会超出左上角
+    left = Math.max(10, left)
+    top = Math.max(10, top)
+  }
+
+  return {
+    left: left + 'px',
+    top: top + 'px',
+  }
+})
+
+// 当visible变化时，重新计算位置
+watch(() => props.visible, async (newVisible) => {
+  if (newVisible) {
+    await nextTick()
+    // 强制重新计算
+    menuRef.value?.offsetHeight
+  }
+})
 </script>
 
 <style scoped>
