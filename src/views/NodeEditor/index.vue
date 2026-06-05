@@ -40,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, markRaw, onMounted, watch } from 'vue'
+import { ref, reactive, markRaw, onMounted, watch, onUnmounted } from 'vue'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
@@ -183,6 +183,30 @@ onMounted(() => {
     }
     nodeStore.addEdge(edge)
   }
+
+  // 键盘删除监听
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      // 检查是否在输入框中
+      const target = event.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return
+      }
+
+      if (nodeStore.selectedNodeId) {
+        nodeStore.removeNode(nodeStore.selectedNodeId)
+        showProperties.value = false
+        event.preventDefault()
+      }
+    }
+  }
+
+  window.addEventListener('keydown', handleKeyDown)
+
+  // 清理
+  onUnmounted(() => {
+    window.removeEventListener('keydown', handleKeyDown)
+  })
 })
 
 interface ContextMenuState {
@@ -288,6 +312,25 @@ const onNodeClick = (event: { event: MouseEvent; node: Node }) => {
   nodeStore.selectNode(event.node.id)
   showProperties.value = true
 }
+
+// 键盘删除
+onMounted(() => {
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      if (nodeStore.selectedNodeId) {
+        nodeStore.removeNode(nodeStore.selectedNodeId)
+        showProperties.value = false
+      }
+    }
+  }
+
+  window.addEventListener('keydown', handleKeyDown)
+
+  // 清理
+  return () => {
+    window.removeEventListener('keydown', handleKeyDown)
+  }
+})
 
 // 节点操作
 const handleNodeAction = (action: string) => {
