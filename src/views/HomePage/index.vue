@@ -162,24 +162,23 @@ const toggleBgMenu = () => {
   showBgMenu.value = !showBgMenu.value
 }
 
-// 点击外部关闭菜单
+// 初始化
 onMounted(() => {
-  document.addEventListener('click', (e: MouseEvent) => {
-    const target = e.target as HTMLElement
-    if (!target.closest('.bg-settings')) {
-      showBgMenu.value = false
-    }
-  })
-})
-
-// 从localStorage恢复背景设置
-onMounted(() => {
+  // 从localStorage恢复背景设置
   const savedBg = localStorage.getItem('homepage_background')
   const savedType = localStorage.getItem('homepage_background_type') as 'image' | 'video'
   if (savedBg) {
     customBackground.value = savedBg
     customBackgroundType.value = savedType || 'image'
   }
+
+  // 点击外部关闭菜单
+  document.addEventListener('click', (e: MouseEvent) => {
+    const target = e.target as HTMLElement
+    if (!target.closest('.bg-settings')) {
+      showBgMenu.value = false
+    }
+  })
 })
 
 // 背景样式
@@ -673,6 +672,90 @@ const formatDate = (timestamp: number) => {
 .empty-action:hover {
   background: rgba(0, 217, 255, 0.25);
   box-shadow: 0 0 16px rgba(0, 217, 255, 0.3);
+}
+
+/* 左下角背景设置 */
+.bg-settings {
+  position: fixed;
+  bottom: 100px;
+  left: 24px;
+  z-index: 100;
+}
+
+.bg-gear-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(2, 3, 8, 0.85);
+  border: 1px solid rgba(0, 217, 255, 0.3);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  backdrop-filter: blur(10px);
+}
+
+.bg-gear-btn:hover {
+  background: rgba(0, 217, 255, 0.15);
+  border-color: #00D9FF;
+  color: #00D9FF;
+  transform: rotate(90deg);
+  box-shadow: 0 0 20px rgba(0, 217, 255, 0.3);
+}
+
+.bg-menu {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 0;
+  background: rgba(2, 3, 8, 0.95);
+  border: 1px solid rgba(0, 217, 255, 0.3);
+  border-radius: 10px;
+  padding: 6px;
+  min-width: 160px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.bg-menu-title {
+  padding: 8px 12px 6px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.bg-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.bg-menu-item:hover {
+  background: rgba(0, 217, 255, 0.15);
+  color: #00D9FF;
+}
+
+.bg-menu-enter-active,
+.bg-menu-leave-active {
+  transition: all 0.25s;
+}
+
+.bg-menu-enter-from,
+.bg-menu-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
 }
 
 /* 响应式 */
