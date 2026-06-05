@@ -114,6 +114,28 @@ const isSelected = computed(() => nodeStore.selectedNodeId === props.id)
 const currentTab = ref('text-to-video')
 const selectedRatio = ref('16:9')
 
+// 根据比例计算节点尺寸
+const nodeSize = computed(() => {
+  if (props.type !== 'ai-video') {
+    return { width: 350, height: 350 }
+  }
+
+  const baseHeight = 350
+  const ratioMap: Record<string, number> = {
+    'auto': 16 / 9,
+    '16:9': 16 / 9,
+    '9:16': 9 / 16,
+    '1:1': 1 / 1,
+    '4:3': 4 / 3,
+    '3:4': 3 / 4,
+  }
+
+  const ratio = ratioMap[selectedRatio.value] || 16 / 9
+  const width = Math.round(baseHeight * ratio)
+
+  return { width, height: baseHeight }
+})
+
 // 检查是否有图片节点连接
 const hasImageInput = computed(() => {
   const incomingEdges = nodeStore.edges.filter(edge => edge.target === props.id)
@@ -202,7 +224,7 @@ const statusText = computed(() => {
   border: 1px solid rgba(0, 217, 255, 0.3);
   border-radius: 12px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: width 0.3s, height 0.3s, border-color 0.3s, box-shadow 0.3s;
   overflow: hidden;
 }
 
