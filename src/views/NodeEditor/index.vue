@@ -464,6 +464,28 @@ const getNodeLabel = (type: string): string => {
   height: 100%;
 }
 
+/* 对齐辅助线 */
+.alignment-line {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.alignment-line.horizontal {
+  width: 100%;
+  height: 1px;
+  left: 0;
+  border-top: 1px dashed rgba(0, 217, 255, 0.8);
+}
+
+.alignment-line.vertical {
+  width: 1px;
+  height: 100%;
+  top: 0;
+  border-left: 1px dashed rgba(0, 217, 255, 0.8);
+}
+}
+
 :deep(.vue-flow__background) {
   background-color: #020308;
 }
