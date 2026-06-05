@@ -1049,6 +1049,17 @@ const statusText = computed(() => {
   margin: 0 2px;
   cursor: default;
   user-select: none;
+  max-height: 24px;
+}
+
+.asset-badge img {
+  width: 16px !important;
+  height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  object-fit: cover !important;
 }
 
 .badge-thumbnail {
