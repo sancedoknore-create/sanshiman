@@ -224,12 +224,25 @@ const confirmNewProject = () => {
   const name = newProjectName.value.trim()
   if (!name) return
 
-  // 创建新项目并跳转到画布
+  // 创建新项目
+  const newProject: Project = {
+    id: `project_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    name,
+    updatedAt: Date.now(),
+    nodeCount: 0,
+  }
+
+  // 添加到最近项目列表（最新的在最前）
+  recentProjects.value.unshift(newProject)
+  saveProjects()
+
+  // 跳转到画布
   router.push({
     path: '/nodes',
     query: {
       newProject: 'true',
       name: encodeURIComponent(name),
+      projectId: newProject.id,
     }
   })
 
@@ -242,6 +255,9 @@ const toggleBgMenu = () => {
 
 // 初始化
 onMounted(() => {
+  // 加载项目列表
+  loadProjects()
+
   // 从localStorage恢复背景设置
   const savedBg = localStorage.getItem('homepage_background')
   const savedType = localStorage.getItem('homepage_background_type') as 'image' | 'video'
@@ -334,7 +350,7 @@ const quickCards = [
   },
 ]
 
-// 最近项目（模拟数据）
+// 最近项目（从localStorage加载）
 interface Project {
   id: string
   name: string
@@ -343,26 +359,29 @@ interface Project {
   nodeCount: number
 }
 
-const recentProjects = ref<Project[]>([
-  {
-    id: '1',
-    name: '科幻短片预告',
-    updatedAt: Date.now() - 1000 * 60 * 30,
-    nodeCount: 8,
-  },
-  {
-    id: '2',
-    name: '产品展示动画',
-    updatedAt: Date.now() - 1000 * 60 * 60 * 3,
-    nodeCount: 5,
-  },
-  {
-    id: '3',
-    name: '风景延时摄影',
-    updatedAt: Date.now() - 1000 * 60 * 60 * 24,
-    nodeCount: 12,
-  },
-])
+const recentProjects = ref<Project[]>([])
+
+// 从localStorage加载项目列表
+const loadProjects = () => {
+  try {
+    const saved = localStorage.getItem('recent_projects')
+    if (saved) {
+      recentProjects.value = JSON.parse(saved)
+    }
+  } catch (err) {
+    console.warn('加载项目列表失败:', err)
+    recentProjects.value = []
+  }
+}
+
+// 保存项目列表到localStorage
+const saveProjects = () => {
+  try {
+    localStorage.setItem('recent_projects', JSON.stringify(recentProjects.value))
+  } catch (err) {
+    console.warn('保存项目列表失败:', err)
+  }
+}
 
 // 创建节点
 const createNode = (type: string) => {
@@ -386,6 +405,7 @@ const openProject = (project: Project) => {
 const deleteProject = (projectId: string) => {
   if (confirm('确定要删除这个项目吗？此操作不可撤销。')) {
     recentProjects.value = recentProjects.value.filter(p => p.id !== projectId)
+    saveProjects()
   }
 }
 
