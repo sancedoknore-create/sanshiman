@@ -235,7 +235,7 @@
 </style>
 
 <script setup lang="ts">
-import { ref, computed, watch, provide, onMounted } from 'vue'
+import { ref, computed, watch, provide, onMounted, nextTick } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
 import { useNodeStore } from '@/stores/node'
 import RatioSelector from './RatioSelector.vue'
