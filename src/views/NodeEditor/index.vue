@@ -66,6 +66,61 @@ const nodeStore = useNodeStore()
 const alignmentLines = ref<Array<{ id: string; type: 'horizontal' | 'vertical'; position: number }>>([])
 const ALIGNMENT_THRESHOLD = 5 // 对齐阈值（像素）
 
+// 节点拖动时检测对齐
+const onNodeDrag = ({ node }: { node: Node }) => {
+  const lines: Array<{ id: string; type: 'horizontal' | 'vertical'; position: number }> = []
+
+  // 获取当前节点的边界
+  const currentNode = node
+  const currentLeft = currentNode.position.x
+  const currentRight = currentNode.position.x + (currentNode.dimensions?.width || 0)
+  const currentTop = currentNode.position.y
+  const currentBottom = currentNode.position.y + (currentNode.dimensions?.height || 0)
+  const currentCenterX = currentLeft + (currentNode.dimensions?.width || 0) / 2
+  const currentCenterY = currentTop + (currentNode.dimensions?.height || 0) / 2
+
+  // 遍历其他节点检测对齐
+  nodes.value.forEach(otherNode => {
+    if (otherNode.id === currentNode.id) return
+
+    const otherLeft = otherNode.position.x
+    const otherRight = otherNode.position.x + (otherNode.dimensions?.width || 0)
+    const otherTop = otherNode.position.y
+    const otherBottom = otherNode.position.y + (otherNode.dimensions?.height || 0)
+    const otherCenterX = otherLeft + (otherNode.dimensions?.width || 0) / 2
+    const otherCenterY = otherTop + (otherNode.dimensions?.height || 0) / 2
+
+    // 检测垂直对齐（左边、右边、中心）
+    if (Math.abs(currentLeft - otherLeft) < ALIGNMENT_THRESHOLD) {
+      lines.push({ id: `v-left-${otherNode.id}`, type: 'vertical', position: otherLeft })
+    }
+    if (Math.abs(currentRight - otherRight) < ALIGNMENT_THRESHOLD) {
+      lines.push({ id: `v-right-${otherNode.id}`, type: 'vertical', position: otherRight })
+    }
+    if (Math.abs(currentCenterX - otherCenterX) < ALIGNMENT_THRESHOLD) {
+      lines.push({ id: `v-center-${otherNode.id}`, type: 'vertical', position: otherCenterX })
+    }
+
+    // 检测水平对齐（上边、下边、中心）
+    if (Math.abs(currentTop - otherTop) < ALIGNMENT_THRESHOLD) {
+      lines.push({ id: `h-top-${otherNode.id}`, type: 'horizontal', position: otherTop })
+    }
+    if (Math.abs(currentBottom - otherBottom) < ALIGNMENT_THRESHOLD) {
+      lines.push({ id: `h-bottom-${otherNode.id}`, type: 'horizontal', position: otherBottom })
+    }
+    if (Math.abs(currentCenterY - otherCenterY) < ALIGNMENT_THRESHOLD) {
+      lines.push({ id: `h-center-${otherNode.id}`, type: 'horizontal', position: otherCenterY })
+    }
+  })
+
+  alignmentLines.value = lines
+}
+
+// 拖动结束清除辅助线
+const onNodeDragStop = () => {
+  alignmentLines.value = []
+}
+
 // 使用本地ref来绑定Vue Flow
 const nodes = ref<Node[]>([])
 const edges = ref<Edge[]>([])
