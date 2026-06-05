@@ -826,6 +826,8 @@ const statusText = computed(() => {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   z-index: 10;
   transition: all 0.3s ease;
+  padding: 16px;
+  padding-top: 40px;
 }
 
 .generator-card.expanded {
@@ -835,30 +837,32 @@ const statusText = computed(() => {
 /* 展开按钮 */
 .expand-btn {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: rgba(0, 217, 255, 0.1);
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid rgba(0, 217, 255, 0.3);
+  background: rgba(38, 38, 38, 0.95);
   color: rgba(0, 217, 255, 0.7);
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
-  z-index: 10;
+  z-index: 100;
 }
 
 .expand-btn:hover {
-  background: rgba(0, 217, 255, 0.2);
+  background: rgba(0, 217, 255, 0.15);
   color: #00D9FF;
+  border-color: #00D9FF;
 }
 
 .expand-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
 .generator-content {
