@@ -101,23 +101,47 @@ export async function loadModelsFromAPI(): Promise<VideoModel[]> {
         id: 'seedance-2.0',
         name: 'Seedance 2.0',
         description: '高质量视频生成',
-        badge: 'VIP'
+        badge: 'VIP',
+        capabilities: {
+          ratios: ['auto', '16:9', '9:16', '1:1', '4:3', '3:4', '21:9'],
+          resolutions: ['480P', '720P', '1080P'],
+          durationRange: { min: 4, max: 15 },
+          audioGeneration: true
+        }
       },
       {
         id: 'seedance-1.5',
         name: 'Seedance 1.5',
         description: '快速生成',
+        capabilities: {
+          ratios: ['16:9', '9:16', '1:1'],
+          resolutions: ['480P', '720P'],
+          durationRange: { min: 4, max: 10 },
+          audioGeneration: false
+        }
       },
       {
         id: 'runway-gen3',
         name: 'Runway Gen-3',
         description: '电影级画质',
-        badge: 'PRO'
+        badge: 'PRO',
+        capabilities: {
+          ratios: ['16:9', '21:9'],
+          resolutions: ['720P', '1080P'],
+          durationRange: { min: 5, max: 10 },
+          audioGeneration: true
+        }
       },
       {
         id: 'pika-1.0',
         name: 'Pika 1.0',
         description: '创意风格',
+        capabilities: {
+          ratios: ['16:9', '9:16', '1:1', '4:3'],
+          resolutions: ['480P', '720P'],
+          durationRange: { min: 3, max: 8 },
+          audioGeneration: false
+        }
       },
     ]
 

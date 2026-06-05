@@ -84,6 +84,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, inject, watch } from 'vue'
+import type { VideoModelCapabilities } from '@/services/videoModelService'
 
 interface RatioOption {
   label: string
@@ -94,10 +95,12 @@ interface RatioOption {
 
 interface Props {
   modelValue?: string
+  capabilities?: VideoModelCapabilities // 当前模型的能力
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  modelValue: '16:9'
+  modelValue: '16:9',
+  capabilities: undefined
 })
 
 const emit = defineEmits<{
@@ -133,9 +136,28 @@ const ratioOptions: RatioOption[] = [
   { label: '3:4', value: '3:4', aspect: '3/4', icon: '▯' },
 ]
 
-const resolutions = ['480P', '720P', '1080P']
-const minDuration = 4
-const maxDuration = 15
+// 根据模型能力过滤可用的比例
+const availableRatios = computed(() => {
+  if (!props.capabilities?.ratios) {
+    return ratioOptions
+  }
+  return ratioOptions.filter(opt => props.capabilities!.ratios!.includes(opt.value))
+})
+
+// 根据模型能力过滤可用的分辨率
+const availableResolutions = computed(() => {
+  if (!props.capabilities?.resolutions) {
+    return resolutions
+  }
+  return resolutions.filter(res => props.capabilities!.resolutions!.includes(res))
+})
+
+// 根据模型能力设置时长范围
+const minDuration = computed(() => props.capabilities?.durationRange?.min ?? 4)
+const maxDuration = computed(() => props.capabilities?.durationRange?.max ?? 15)
+
+// 根据模型能力决定是否显示音频开关
+const audioAvailable = computed(() => props.capabilities?.audioGeneration ?? true)
 
 const selectedOption = computed(() => {
   return ratioOptions.find(opt => opt.value === props.modelValue) || ratioOptions[0]
