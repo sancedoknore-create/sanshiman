@@ -44,6 +44,63 @@
             </button>
           </div>
 
+          <!-- 素材缩略图区域 -->
+          <div v-if="type === 'ai-video' && uploadedAssets.length > 0" class="assets-preview">
+            <div class="asset-item" v-for="asset in uploadedAssets" :key="asset.id">
+              <!-- 图片缩略图 -->
+              <div v-if="asset.type === 'image'" class="asset-thumbnail">
+                <img :src="asset.url" :alt="asset.name" />
+                <button class="asset-remove" @click.stop="removeAsset(asset.id)">×</button>
+              </div>
+
+              <!-- 视频缩略图 -->
+              <div v-else-if="asset.type === 'video'" class="asset-thumbnail video">
+                <video :src="asset.url" />
+                <div class="video-overlay">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 16 16" fill="white">
+                    <path d="M4.66699 2.64248C4.66717 1.82358 5.59736 1.35167 6.25781 1.83584L13.5674 7.19619C14.1117 7.59579 14.1118 8.40897 13.5674 8.8085L6.25781 14.1688C5.59734 14.6528 4.6671 14.1811 4.66699 13.3622V2.64248Z"/>
+                  </svg>
+                </div>
+                <button class="asset-remove" @click.stop="removeAsset(asset.id)">×</button>
+              </div>
+
+              <!-- 音频缩略图 -->
+              <div v-else class="asset-thumbnail audio">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                </svg>
+                <button class="asset-remove" @click.stop="removeAsset(asset.id)">×</button>
+              </div>
+            </div>
+
+            <!-- 上传按钮 -->
+            <label class="asset-upload">
+              <input
+                type="file"
+                accept="image/*,video/*,audio/*"
+                multiple
+                @change="handleFileUpload"
+                style="display: none"
+              />
+              <div class="upload-icon">+</div>
+            </label>
+          </div>
+
+          <!-- 首次上传按钮（无素材时） -->
+          <div v-if="type === 'ai-video' && uploadedAssets.length === 0 && currentTab !== 'text-to-video'" class="upload-prompt">
+            <label class="upload-prompt-btn">
+              <input
+                type="file"
+                accept="image/*,video/*,audio/*"
+                multiple
+                @change="handleFileUpload"
+                style="display: none"
+              />
+              <span class="upload-icon">📤</span>
+              <span>上传素材</span>
+            </label>
+          </div>
+
           <textarea
             v-model="localPrompt"
             @change="updatePrompt"
@@ -404,9 +461,135 @@ const statusText = computed(() => {
 .generator-tabs {
   display: flex;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   padding: 4px;
   overflow-x: auto;
+}
+
+.assets-preview {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  padding: 4px;
+}
+
+.asset-item {
+  flex-shrink: 0;
+}
+
+.asset-thumbnail {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.asset-thumbnail img,
+.asset-thumbnail video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.asset-thumbnail.video .video-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+.asset-thumbnail.audio {
+  color: #00D9FF;
+}
+
+.asset-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  color: white;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.asset-remove:hover {
+  background: #ff4444;
+  transform: scale(1.1);
+}
+
+.asset-upload {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  border: 2px dashed rgba(0, 217, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.asset-upload:hover {
+  border-color: #00D9FF;
+  background: rgba(0, 217, 255, 0.05);
+}
+
+.asset-upload .upload-icon {
+  font-size: 32px;
+  color: rgba(0, 217, 255, 0.5);
+}
+
+.upload-prompt {
+  margin-bottom: 12px;
+  padding: 20px;
+  border: 2px dashed rgba(0, 217, 255, 0.3);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.upload-prompt-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: #888;
+  transition: color 0.2s;
+}
+
+.upload-prompt-btn:hover {
+  color: #00D9FF;
+}
+
+.upload-prompt-btn .upload-icon {
+  font-size: 32px;
+}
+
+.upload-prompt-btn span:last-child {
+  font-size: 14px;
 }
 
 .tab-btn {
