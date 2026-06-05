@@ -93,7 +93,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, provide } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
 import { useNodeStore } from '@/stores/node'
 import RatioSelector from './RatioSelector.vue'
@@ -118,6 +118,15 @@ const isSelected = computed(() => nodeStore.selectedNodeId === props.id)
 const currentTab = ref('text-to-video')
 const selectedRatio = ref('16:9')
 const selectedModel = ref('seedance-2.0')
+
+// 当前打开的选择器（用于互斥）
+const openSelector = ref<string | null>(null)
+
+// 提供给子组件的方法
+provide('openSelector', openSelector)
+provide('requestOpen', (selectorId: string) => {
+  openSelector.value = selectorId
+})
 
 // 根据比例计算节点尺寸
 const nodeSize = computed(() => {

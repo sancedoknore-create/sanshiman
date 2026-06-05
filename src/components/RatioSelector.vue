@@ -83,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject, watch } from 'vue'
 
 interface RatioOption {
   label: string
@@ -110,6 +110,19 @@ const selectedResolution = ref('1080P')
 const selectedDuration = ref(15) // 改为数字
 const enableAudio = ref(false) // 音频开关
 
+const SELECTOR_ID = 'ratio-selector'
+
+// 注入父组件提供的控制器
+const openSelector = inject<any>('openSelector', ref(null))
+const requestOpen = inject<any>('requestOpen', () => {})
+
+// 监听全局打开状态
+watch(openSelector, (currentOpen) => {
+  if (currentOpen !== SELECTOR_ID) {
+    isOpen.value = false
+  }
+})
+
 const ratioOptions: RatioOption[] = [
   { label: 'Auto', value: 'auto', aspect: '1/1', icon: '⚡' },
   { label: '16:9', value: '16:9', aspect: '16/9', icon: '▭' },
@@ -134,7 +147,13 @@ const selectedLabel = computed(() => {
 })
 
 function toggle() {
-  isOpen.value = !isOpen.value
+  if (isOpen.value) {
+    isOpen.value = false
+    requestOpen(null)
+  } else {
+    isOpen.value = true
+    requestOpen(SELECTOR_ID)
+  }
 }
 
 function selectOption(option: RatioOption) {
