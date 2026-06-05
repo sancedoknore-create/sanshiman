@@ -264,15 +264,13 @@ onUnmounted(() => {
   color: #ffffff;
 }
 
-.resolution-list,
-.duration-list {
+.resolution-list {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.resolution-option,
-.duration-option {
+.resolution-option {
   padding: 6px 12px;
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -283,17 +281,69 @@ onUnmounted(() => {
   transition: all 0.2s;
 }
 
-.resolution-option:hover,
-.duration-option:hover {
+.resolution-option:hover {
   background: rgba(255, 255, 255, 0.05);
   border-color: rgba(0, 217, 255, 0.3);
 }
 
-.resolution-option.active,
-.duration-option.active {
+.resolution-option.active {
   background: rgba(0, 217, 255, 0.1);
   border-color: #00D9FF;
   color: #00D9FF;
+}
+
+.duration-slider {
+  padding: 0 4px;
+}
+
+.slider {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #00D9FF;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(0, 217, 255, 0.5);
+}
+
+.slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #00D9FF;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 8px rgba(0, 217, 255, 0.5);
+}
+
+.slider::-webkit-slider-thumb:hover {
+  background: #00f0ff;
+  box-shadow: 0 0 12px rgba(0, 217, 255, 0.8);
+}
+
+.slider::-moz-range-thumb:hover {
+  background: #00f0ff;
+  box-shadow: 0 0 12px rgba(0, 217, 255, 0.8);
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 11px;
+  color: #888;
 }
 
 /* 下拉动画 */
