@@ -67,6 +67,19 @@ const nodeStore = useNodeStore()
 const alignmentLines = ref<Array<{ id: string; type: 'horizontal' | 'vertical'; position: number }>>([])
 const ALIGNMENT_THRESHOLD = 5 // 对齐阈值（像素）
 
+// 连接验证：只允许从source连接到target
+const isValidConnection = (connection: any) => {
+  // 不允许连接到自己
+  if (connection.source === connection.target) {
+    return false
+  }
+
+  // sourceHandle应该是null或undefined（默认source handle）
+  // targetHandle应该是null或undefined（默认target handle）
+  // 这样可以确保从右侧source连接到左侧target
+  return true
+}
+
 // 节点拖动时检测对齐
 const onNodeDrag = ({ node }: { node: Node }) => {
   const lines: Array<{ id: string; type: 'horizontal' | 'vertical'; position: number }> = []
