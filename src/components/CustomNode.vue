@@ -608,7 +608,19 @@ const connectedAssets = computed(() => {
 
   incomingEdges.forEach(edge => {
     const sourceNode = nodeStore.nodes.find(n => n.id === edge.source)
-    if (sourceNode?.data?.outputImage) {
+
+    // 检查asset-ref节点（上传的素材）
+    if (sourceNode?.type === 'asset-ref' && sourceNode.data?.assetUrl) {
+      assets.push({
+        id: `node_${sourceNode.id}`,
+        type: sourceNode.data.assetType || 'image',
+        url: sourceNode.data.assetUrl,
+        name: sourceNode.data.assetName || sourceNode.data.label || '上传素材',
+        fromNode: true
+      })
+    }
+    // 检查AI节点的输出
+    else if (sourceNode?.data?.outputImage) {
       // 如果源节点有输出图片
       assets.push({
         id: `node_${sourceNode.id}`,
