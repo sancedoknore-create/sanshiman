@@ -109,7 +109,8 @@
             ref="editableRef"
             contenteditable="true"
             @input="handleContentEdit"
-            @click.stop
+            @click.stop="focusEditable"
+            @mousedown.stop
             class="generator-input editable"
             data-placeholder="描述你想要生成的画面内容，输入 @ 引用素材..."
           ></div>
@@ -269,6 +270,25 @@ const mentionPosition = ref({ top: 0, left: 0 })
 const mentionFilter = ref('')
 const editableRef = ref<HTMLDivElement>()
 
+// 手动聚焦函数
+const focusEditable = () => {
+  if (editableRef.value) {
+    editableRef.value.focus()
+    // 将光标移到末尾
+    const range = document.createRange()
+    const sel = window.getSelection()
+    if (editableRef.value.childNodes.length > 0) {
+      const lastNode = editableRef.value.childNodes[editableRef.value.childNodes.length - 1]
+      range.setStartAfter(lastNode)
+    } else {
+      range.selectNodeContents(editableRef.value)
+    }
+    range.collapse(false)
+    sel?.removeAllRanges()
+    sel?.addRange(range)
+  }
+}
+
 // 处理contenteditable输入
 const handleContentEdit = (event: Event) => {
   const div = event.target as HTMLDivElement
@@ -427,11 +447,13 @@ onMounted(() => {
 
 // 监听选中状态，选中时聚焦输入框
 watch(() => isSelected.value, (selected) => {
-  if (selected && editableRef.value) {
-    // 延迟聚焦，等待动画完成
-    setTimeout(() => {
-      editableRef.value?.focus()
-    }, 300)
+  if (selected) {
+    // 使用nextTick和多次尝试确保聚焦
+    nextTick(() => {
+      setTimeout(() => {
+        focusEditable()
+      }, 350)
+    })
   }
 })
 
