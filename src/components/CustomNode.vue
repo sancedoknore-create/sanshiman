@@ -40,8 +40,15 @@
             <div class="progress-number">{{ data.progress || 0 }}%</div>
             <div class="progress-text">生成中...</div>
           </div>
-          <!-- 已完成 - 显示视频首帧 -->
-          <video v-else-if="data.status === 'completed' && data.outputVideo" :src="data.outputVideo" class="generated-preview" />
+          <!-- 已完成 - 显示视频（可播放） -->
+          <video
+            v-else-if="data.status === 'completed' && data.outputVideo"
+            :src="data.outputVideo"
+            class="generated-preview video-preview"
+            controls
+            preload="metadata"
+            @loadedmetadata="onVideoLoaded"
+          />
           <!-- 默认 - 显示图标 -->
           <div v-else class="node-icon-large">
             <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 16 16" fill="currentColor">
@@ -709,6 +716,12 @@ watch(() => props.data.prompt, (newPrompt) => {
 
 const selectNode = () => {
   nodeStore.selectNode(props.id)
+}
+
+// 视频加载完成，定位到第一帧
+const onVideoLoaded = (event: Event) => {
+  const video = event.target as HTMLVideoElement
+  video.currentTime = 0.1 // 定位到0.1秒显示首帧
 }
 
 const updatePrompt = () => {
