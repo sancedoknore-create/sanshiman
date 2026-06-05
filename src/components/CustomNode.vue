@@ -1,7 +1,7 @@
 <template>
   <div class="custom-node" :class="{ selected: isSelected }">
-    <!-- 节点主体 - 固定350x350 -->
-    <div class="node-main" @click.stop="selectNode">
+    <!-- 节点主体 - 动态尺寸 -->
+    <div class="node-main" @click.stop="selectNode" :style="{ width: nodeSize.width + 'px', height: nodeSize.height + 'px' }">
       <div class="node-content">
         <!-- SVG图标 -->
         <div class="node-icon-large">
@@ -213,7 +213,6 @@ const statusText = computed(() => {
 <style scoped>
 .custom-node {
   position: relative;
-  width: 350px;
 }
 
 /* 节点主体 */
