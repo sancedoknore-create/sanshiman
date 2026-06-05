@@ -95,7 +95,7 @@ const selectedResolution = ref('1080P')
 const selectedDuration = ref(15) // 改为数字
 
 const ratioOptions: RatioOption[] = [
-  { label: 'Auto', value: 'auto', aspect: '16/9', icon: '⚡' },
+  { label: 'Auto', value: 'auto', aspect: '1/1', icon: '⚡' },
   { label: '16:9', value: '16:9', aspect: '16/9', icon: '▭' },
   { label: '21:9', value: '21:9', aspect: '21/9', icon: '▬' },
   { label: '9:16', value: '9:16', aspect: '9/16', icon: '▯' },
@@ -250,6 +250,7 @@ onUnmounted(() => {
   border: 1.5px solid currentColor;
   border-radius: 2px;
   color: #888;
+  padding: 4px;
 }
 
 .ratio-option.active .ratio-icon-box {
@@ -258,8 +259,8 @@ onUnmounted(() => {
 
 .ratio-box-inner {
   display: block;
-  width: 60%;
-  height: 60%;
+  width: 100%;
+  height: 100%;
   border: 1.5px solid currentColor;
   border-radius: 1px;
 }
