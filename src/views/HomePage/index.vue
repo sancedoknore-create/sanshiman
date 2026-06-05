@@ -30,24 +30,6 @@
               </svg>
               新建项目
             </button>
-            <button class="hero-btn" @click="triggerBackgroundUpload">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                <polyline points="21 15 16 10 5 21"></polyline>
-              </svg>
-              更换背景
-            </button>
-            <input
-              ref="bgInputRef"
-              type="file"
-              accept="image/*,video/*"
-              @change="handleBackgroundUpload"
-              style="display: none"
-            />
-            <button v-if="customBackground" class="hero-btn ghost" @click="resetBackground">
-              重置
-            </button>
           </div>
         </div>
       </section>
@@ -123,6 +105,46 @@
         </div>
       </section>
     </div>
+
+    <!-- 左下角背景设置齿轮 -->
+    <div class="bg-settings">
+      <button class="bg-gear-btn" @click="toggleBgMenu" title="主页设置">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"></path>
+        </svg>
+      </button>
+
+      <transition name="bg-menu">
+        <div v-if="showBgMenu" class="bg-menu" @click.stop>
+          <div class="bg-menu-title">主页背景</div>
+          <button class="bg-menu-item" @click="triggerBackgroundUpload">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+            <span>更换背景</span>
+          </button>
+          <button v-if="customBackground" class="bg-menu-item" @click="resetBackground">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+              <path d="M21 3v5h-5"></path>
+              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+              <path d="M3 21v-5h5"></path>
+            </svg>
+            <span>重置默认</span>
+          </button>
+          <input
+            ref="bgInputRef"
+            type="file"
+            accept="image/*,video/*"
+            @change="handleBackgroundUpload"
+            style="display: none"
+          />
+        </div>
+      </transition>
+    </div>
   </div>
 </template>
 
@@ -134,6 +156,21 @@ const router = useRouter()
 const bgInputRef = ref<HTMLInputElement>()
 const customBackground = ref<string>('')
 const customBackgroundType = ref<'image' | 'video'>('image')
+const showBgMenu = ref(false)
+
+const toggleBgMenu = () => {
+  showBgMenu.value = !showBgMenu.value
+}
+
+// 点击外部关闭菜单
+onMounted(() => {
+  document.addEventListener('click', (e: MouseEvent) => {
+    const target = e.target as HTMLElement
+    if (!target.closest('.bg-settings')) {
+      showBgMenu.value = false
+    }
+  })
+})
 
 // 从localStorage恢复背景设置
 onMounted(() => {
@@ -198,18 +235,11 @@ const resetBackground = () => {
 // 快速创建卡片
 const quickCards = [
   {
-    type: 'ai-video',
-    title: 'AI视频生成',
-    description: '文本/图片转视频',
+    type: 'ai-short-drama',
+    title: 'AI短剧生成',
+    description: '一键生成短剧视频',
     icon: '🎬',
     color: 'linear-gradient(135deg, #00D9FF 0%, #B432FF 100%)',
-  },
-  {
-    type: 'ai-image',
-    title: 'AI图片生成',
-    description: 'AI绘图创作',
-    icon: '🎨',
-    color: 'linear-gradient(135deg, #FF6B9D 0%, #FFC371 100%)',
   },
   {
     type: '3d-scene',
@@ -219,8 +249,8 @@ const quickCards = [
     color: 'linear-gradient(135deg, #B432FF 0%, #FF6B9D 100%)',
   },
   {
-    type: 'asset-ref',
-    title: '素材引用',
+    type: 'asset-library',
+    title: '素材库',
     description: '管理项目素材',
     icon: '📦',
     color: 'linear-gradient(135deg, #FFC371 0%, #00D9FF 100%)',
@@ -259,7 +289,15 @@ const recentProjects = ref<Project[]>([
 
 // 创建节点
 const createNode = (type: string) => {
-  router.push({ path: '/nodes', query: { create: type } })
+  if (type === 'ai-short-drama') {
+    router.push({ path: '/nodes', query: { create: 'ai-video' } })
+  } else if (type === '3d-scene') {
+    router.push('/director3d')
+  } else if (type === 'asset-library') {
+    router.push('/assets')
+  } else {
+    router.push({ path: '/nodes', query: { create: type } })
+  }
 }
 
 // 打开项目
