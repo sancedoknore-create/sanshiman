@@ -247,7 +247,12 @@ const textareaRef = ref<HTMLTextAreaElement>()
 
 // 聚焦textarea
 const focusTextarea = () => {
-  textareaRef.value?.focus()
+  if (textareaRef.value) {
+    textareaRef.value.focus()
+    // 光标移到末尾
+    const len = textareaRef.value.value.length
+    textareaRef.value.setSelectionRange(len, len)
+  }
 }
 
 // 解析提示词，将@引用转换为可视化部分
@@ -1000,8 +1005,8 @@ const statusText = computed(() => {
   width: 100%;
   height: 100%;
   opacity: 0;
-  pointer-events: all;
-  z-index: 1;
+  pointer-events: none;
+  z-index: -1;
 }
 
 /* 素材徽章 */
