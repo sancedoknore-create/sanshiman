@@ -354,7 +354,7 @@ const localPrompt = ref(props.data.prompt || '')
 const isSelected = computed(() => nodeStore.selectedNodeId === props.id)
 const currentTab = ref('text-to-video')
 const selectedRatio = ref('16:9')
-const selectedModel = ref('seedance-2.0')
+const selectedModel = ref(props.type === 'ai-image' ? 'dall-e-3' : 'seedance-2.0')
 const selectedStyle = ref('realistic')
 
 // 图片节点的比例能力（不限制时长和音频）
