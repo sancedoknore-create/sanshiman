@@ -312,9 +312,13 @@ onMounted(() => {
   const handleKeyDown = (event: KeyboardEvent) => {
     // 如果焦点在输入元素中，不处理删除
     const target = event.target as HTMLElement
+
+    // 检查目标元素本身或其父元素是否为输入元素
     if (target.tagName === 'INPUT' ||
         target.tagName === 'TEXTAREA' ||
-        target.isContentEditable) {
+        target.isContentEditable ||
+        target.closest('[contenteditable="true"]') ||
+        target.closest('.generator-input')) {
       return
     }
 
