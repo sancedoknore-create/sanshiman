@@ -242,11 +242,22 @@ const handlePromptInput = (event: Event) => {
       mentionFilter.value = textAfterAt
       showAssetMention.value = allAssets.value.length > 0
 
-      // 计算弹出位置
-      const rect = textarea.getBoundingClientRect()
-      mentionPosition.value = {
-        top: rect.top - 200, // 在输入框上方
-        left: rect.left
+      // 计算弹出位置（相对于生成卡片）
+      const card = textarea.closest('.generator-card') as HTMLElement
+      if (card) {
+        const cardRect = card.getBoundingClientRect()
+        const textareaRect = textarea.getBoundingClientRect()
+
+        mentionPosition.value = {
+          top: textareaRect.top - cardRect.top - 210, // 在输入框上方，相对于卡片
+          left: textareaRect.left - cardRect.left + 10
+        }
+      } else {
+        const rect = textarea.getBoundingClientRect()
+        mentionPosition.value = {
+          top: 10,
+          left: 10
+        }
       }
       console.log('Show mention list:', showAssetMention.value, 'FilteredAssets:', filteredAssets.value.length)
     } else {
@@ -754,7 +765,7 @@ const statusText = computed(() => {
 
 /* @ 提及列表 */
 .asset-mention-list {
-  position: fixed;
+  position: absolute;
   width: 300px;
   max-height: 200px;
   overflow-y: auto;
