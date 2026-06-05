@@ -63,6 +63,10 @@ export const useNodeStore = defineStore('node', () => {
     edges.value.push(edge)
   }
 
+  function removeEdge(edgeId: string) {
+    edges.value = edges.value.filter(e => e.id !== edgeId)
+  }
+
   async function executeNode(nodeId: string) {
     const node = nodes.value.find(n => n.id === nodeId)
     if (!node) return
@@ -144,6 +148,7 @@ export const useNodeStore = defineStore('node', () => {
     updateNodeData,
     selectNode,
     addEdge,
+    removeEdge,
     executeNode,
     resetNode,
   }
