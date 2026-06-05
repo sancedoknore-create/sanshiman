@@ -1017,6 +1017,11 @@ const statusText = computed(() => {
   overflow-y: auto;
   white-space: pre-wrap;
   word-wrap: break-word;
+  cursor: text;
+}
+
+.generator-input.editable * {
+  cursor: text;
 }
 
 .generator-input.editable:empty:before {
@@ -1052,6 +1057,7 @@ const statusText = computed(() => {
   border-radius: 2px;
   object-fit: cover;
   flex-shrink: 0;
+  display: block;
 }
 
 .badge-icon {
