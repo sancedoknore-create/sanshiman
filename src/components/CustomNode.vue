@@ -312,6 +312,8 @@ import { Handle, Position } from '@vue-flow/core'
 import { useNodeStore } from '@/stores/node'
 import RatioSelector from './RatioSelector.vue'
 import ModelSelector from './ModelSelector.vue'
+import SizeSelector from './SizeSelector.vue'
+import StyleSelector from './StyleSelector.vue'
 import { getVideoModels, type VideoModel } from '@/services/videoModelService'
 
 interface Props {
