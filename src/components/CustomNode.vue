@@ -695,7 +695,8 @@ provide('requestOpen', (selectorId: string) => {
 
 // 根据比例计算节点尺寸
 const nodeSize = computed(() => {
-  if (props.type !== 'ai-video') {
+  // 视频节点和绘图节点都支持比例变化
+  if (props.type !== 'ai-video' && props.type !== 'ai-image') {
     return { width: 350, height: 350 }
   }
 
@@ -708,6 +709,8 @@ const nodeSize = computed(() => {
     '1:1': 1 / 1,
     '4:3': 4 / 3,
     '3:4': 3 / 4,
+    '3:2': 3 / 2,
+    '2:3': 2 / 3,
   }
 
   const ratio = ratioMap[selectedRatio.value] || 16 / 9
