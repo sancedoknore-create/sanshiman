@@ -48,6 +48,7 @@
             v-model="localPrompt"
             @change="updatePrompt"
             @click.stop
+            @keydown.stop
             placeholder="描述你想要生成的画面内容..."
             class="generator-input"
             rows="3"
