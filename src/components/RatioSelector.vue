@@ -20,8 +20,8 @@
               :class="{ active: modelValue === option.value }"
               @click.stop="selectOption(option)"
             >
-              <span class="ratio-icon-box" :style="{ aspectRatio: option.aspect }">
-                <span class="ratio-box-inner"></span>
+              <span class="ratio-icon-box">
+                <span class="ratio-box-inner" :style="{ aspectRatio: option.aspect }"></span>
               </span>
               <span class="ratio-label">{{ option.label }}</span>
             </button>
@@ -247,10 +247,10 @@ onUnmounted(() => {
   justify-content: center;
   width: 32px;
   height: 32px;
-  border: 1.5px solid currentColor;
+  border: none;
   border-radius: 2px;
   color: #888;
-  padding: 4px;
+  padding: 0;
 }
 
 .ratio-option.active .ratio-icon-box {
@@ -258,11 +258,12 @@ onUnmounted(() => {
 }
 
 .ratio-box-inner {
-  display: block;
-  width: 100%;
-  height: 100%;
   border: 1.5px solid currentColor;
   border-radius: 1px;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: 24px;
 }
 
 .ratio-label {
