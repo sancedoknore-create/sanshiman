@@ -819,12 +819,46 @@ const statusText = computed(() => {
   top: calc(100% + 16px);
   left: 50%;
   transform: translateX(-50%);
-  width: 640px;
+  width: 400px;
   background: #262626;
   border: 1px solid rgba(0, 217, 255, 0.3);
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   z-index: 10;
+  transition: width 0.3s ease;
+}
+
+.generator-card.expanded {
+  width: 600px;
+}
+
+/* 展开按钮 */
+.expand-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: rgba(0, 217, 255, 0.1);
+  color: rgba(0, 217, 255, 0.7);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.expand-btn:hover {
+  background: rgba(0, 217, 255, 0.2);
+  color: #00D9FF;
+}
+
+.expand-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .generator-content {
