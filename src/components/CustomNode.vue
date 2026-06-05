@@ -2,7 +2,7 @@
   <div class="custom-node" :class="{ selected: isSelected }">
     <!-- 节点主体 - 动态尺寸 -->
     <div class="node-main" @click.stop="selectNode" :style="{ width: nodeSize.width + 'px', height: nodeSize.height + 'px' }">
-      <div class="node-content">
+      <div class="node-content" :class="{ generating: data.status === 'running' }">
         <!-- 素材引用节点 - 显示上传的素材 -->
         <template v-if="type === 'asset-ref' && data.assetUrl">
           <img v-if="data.assetType === 'image'" :src="data.assetUrl" class="asset-preview" />
@@ -15,23 +15,45 @@
           </div>
         </template>
 
-        <!-- 其他节点类型 -->
-        <template v-else>
-          <!-- SVG图标 -->
-          <div class="node-icon-large">
-            <!-- AI绘图节点 - 图片图标 -->
-            <svg v-if="type === 'ai-image'" xmlns="http://www.w3.org/2000/svg" width="90" height="90" viewBox="0 0 66 66" fill="currentColor">
+        <!-- AI绘图节点 -->
+        <template v-else-if="type === 'ai-image'">
+          <!-- 生成中 - 显示进度 -->
+          <div v-if="data.status === 'running'" class="progress-display">
+            <div class="progress-number">{{ data.progress || 0 }}%</div>
+            <div class="progress-text">生成中...</div>
+          </div>
+          <!-- 已完成 - 显示生成的图片 -->
+          <img v-else-if="data.status === 'completed' && data.outputImage" :src="data.outputImage" class="generated-preview" />
+          <!-- 默认 - 显示图标 -->
+          <div v-else class="node-icon-large">
+            <svg xmlns="http://www.w3.org/2000/svg" width="90" height="90" viewBox="0 0 66 66" fill="currentColor">
               <path d="M26.4648 19.2146C26.9874 18.431 28.1396 18.4309 28.6621 19.2146L40.8262 37.4607L44.5361 32.0056C45.06 31.2354 46.1959 31.2353 46.7197 32.0056L55.4453 44.8376C56.041 45.7138 55.4139 46.8998 54.3545 46.9001H10.4746C9.42048 46.9001 8.79159 45.7256 9.37598 44.8484L26.4648 19.2146Z"/>
               <circle cx="42.24" cy="20.46" r="3.96"/>
             </svg>
+          </div>
+        </template>
 
-            <!-- AI视频节点 - 播放图标 -->
-            <svg v-else-if="type === 'ai-video'" xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 16 16" fill="currentColor">
+        <!-- AI视频节点 -->
+        <template v-else-if="type === 'ai-video'">
+          <!-- 生成中 - 显示进度 -->
+          <div v-if="data.status === 'running'" class="progress-display">
+            <div class="progress-number">{{ data.progress || 0 }}%</div>
+            <div class="progress-text">生成中...</div>
+          </div>
+          <!-- 已完成 - 显示视频首帧 -->
+          <video v-else-if="data.status === 'completed' && data.outputVideo" :src="data.outputVideo" class="generated-preview" />
+          <!-- 默认 - 显示图标 -->
+          <div v-else class="node-icon-large">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 16 16" fill="currentColor">
               <path d="M4.66699 2.64248C4.66717 1.82358 5.59736 1.35167 6.25781 1.83584L13.5674 7.19619C14.1117 7.59579 14.1118 8.40897 13.5674 8.8085L6.25781 14.1688C5.59734 14.6528 4.6671 14.1811 4.66699 13.3622V2.64248Z"/>
             </svg>
+          </div>
+        </template>
 
-            <!-- 其他节点 - 使用emoji -->
-            <span v-else>{{ icon }}</span>
+        <!-- 其他节点类型 -->
+        <template v-else>
+          <div class="node-icon-large">
+            <span>{{ icon }}</span>
           </div>
         </template>
       </div>
