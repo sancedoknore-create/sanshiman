@@ -57,7 +57,7 @@
             <div class="generator-options">
               <!-- 视频节点：模型选择器 + 比例选择器 -->
               <template v-if="type === 'ai-video'">
-                <ModelSelector v-model="selectedModel" />
+                <ModelSelector v-model="selectedModel" :models="availableModels" />
                 <RatioSelector v-model="selectedRatio" />
               </template>
 
@@ -93,11 +93,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, provide } from 'vue'
+import { ref, computed, watch, provide, onMounted } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
 import { useNodeStore } from '@/stores/node'
 import RatioSelector from './RatioSelector.vue'
 import ModelSelector from './ModelSelector.vue'
+import { getVideoModels, type VideoModel } from '@/services/videoModelService'
 
 interface Props {
   id: string
@@ -118,6 +119,12 @@ const isSelected = computed(() => nodeStore.selectedNodeId === props.id)
 const currentTab = ref('text-to-video')
 const selectedRatio = ref('16:9')
 const selectedModel = ref('seedance-2.0')
+const availableModels = ref<VideoModel[]>([])
+
+// 加载模型列表
+onMounted(() => {
+  availableModels.value = getVideoModels()
+})
 
 // 当前打开的选择器（用于互斥）
 const openSelector = ref<string | null>(null)
