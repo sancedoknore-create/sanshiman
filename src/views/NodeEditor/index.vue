@@ -11,12 +11,26 @@
       @pane-context-menu="onPaneContextMenu"
       @node-context-menu="onNodeContextMenu"
       @node-click="onNodeClick"
+      @node-drag="onNodeDrag"
+      @node-drag-stop="onNodeDragStop"
       class="vue-flow-container"
     >
       <Background pattern-color="#00D9FF" :gap="20" :size="1" />
       <Controls />
       <MiniMap />
     </VueFlow>
+
+    <!-- 对齐辅助线 -->
+    <div
+      v-for="line in alignmentLines"
+      :key="line.id"
+      class="alignment-line"
+      :class="line.type"
+      :style="{
+        left: line.type === 'vertical' ? line.position + 'px' : 0,
+        top: line.type === 'horizontal' ? line.position + 'px' : 0,
+      }"
+    ></div>
 
     <!-- 右键菜单 -->
     <ContextMenu
@@ -47,6 +61,10 @@ import { useNodeStore } from '@/stores/node'
 
 const nodeStore = useNodeStore()
 // const showProperties = ref(false) // 已移除
+
+// 对齐辅助线
+const alignmentLines = ref<Array<{ id: string; type: 'horizontal' | 'vertical'; position: number }>>([])
+const ALIGNMENT_THRESHOLD = 5 // 对齐阈值（像素）
 
 // 使用本地ref来绑定Vue Flow
 const nodes = ref<Node[]>([])
