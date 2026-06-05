@@ -263,9 +263,6 @@ const handlePromptInput = (event: Event) => {
     } else {
       showAssetMention.value = false
     }
-    } else {
-      showAssetMention.value = false
-    }
   } else {
     showAssetMention.value = false
   }
