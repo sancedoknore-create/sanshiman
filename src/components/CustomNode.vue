@@ -124,12 +124,24 @@ const hasAnyInput = computed(() => {
 
 // 视频节点选项卡 - 根据输入动态启用
 const videoTabs = computed(() => [
-  { label: '文生视频', value: 'text-to-video', disabled: false },
-  { label: '全能参考', value: 'universal-ref', disabled: !hasAnyInput.value },
-  { label: '图生视频', value: 'image-to-video', disabled: !hasImageInput.value },
-  { label: '首尾帧', value: 'first-last-frame', disabled: !hasImageInput.value },
-  { label: '图片参考', value: 'image-ref', disabled: !hasImageInput.value },
+  { label: '文生视频', value: 'text-to-video', disabled: hasAnyInput.value }, // 有输入时禁用
+  { label: '全能参考', value: 'universal-ref', disabled: !hasAnyInput.value }, // 有输入时启用
+  { label: '图生视频', value: 'image-to-video', disabled: !hasImageInput.value }, // 有图片输入时启用
+  { label: '首尾帧', value: 'first-last-frame', disabled: !hasImageInput.value }, // 有图片输入时启用
+  { label: '图片参考', value: 'image-ref', disabled: !hasImageInput.value }, // 有图片输入时启用
 ])
+
+// 当输入变化时，自动切换到可用的选项卡
+watch([hasAnyInput, hasImageInput], ([anyInput, imageInput]) => {
+  const currentTabObj = videoTabs.value.find(t => t.value === currentTab.value)
+  if (currentTabObj?.disabled) {
+    // 当前选中的选项卡被禁用，切换到第一个可用的
+    const firstAvailable = videoTabs.value.find(t => !t.disabled)
+    if (firstAvailable) {
+      currentTab.value = firstAvailable.value
+    }
+  }
+})
 
 watch(() => props.data.prompt, (newPrompt) => {
   localPrompt.value = newPrompt || ''
