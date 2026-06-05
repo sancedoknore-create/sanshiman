@@ -28,14 +28,7 @@
       @close="contextMenu.visible = false"
     />
 
-    <!-- 属性面板 -->
-    <transition name="slide">
-      <NodeProperties
-        v-if="showProperties && nodeStore.selectedNode"
-        :node="nodeStore.selectedNode"
-        @close="showProperties = false"
-      />
-    </transition>
+    <!-- 属性面板已移除 - 所有编辑都在节点底部的生成卡片中 -->
   </div>
 </template>
 
@@ -49,11 +42,11 @@ import type { Node, Edge } from '@vue-flow/core'
 import ContextMenu from '@/components/ContextMenu.vue'
 import CustomNode from '@/components/CustomNode.vue'
 import AnimatedEdge from '@/components/AnimatedEdge.vue'
-import NodeProperties from '@/components/NodeProperties.vue'
+// import NodeProperties from '@/components/NodeProperties.vue' // 已移除
 import { useNodeStore } from '@/stores/node'
 
 const nodeStore = useNodeStore()
-const showProperties = ref(false)
+// const showProperties = ref(false) // 已移除
 
 // 使用本地ref来绑定Vue Flow
 const nodes = ref<Node[]>([])
@@ -310,7 +303,8 @@ const addNodeByType = (type: string) => {
 // 节点点击
 const onNodeClick = (event: { event: MouseEvent; node: Node }) => {
   nodeStore.selectNode(event.node.id)
-  showProperties.value = true
+  // 不再显示属性面板
+  // showProperties.value = true
 }
 
 // 键盘删除
