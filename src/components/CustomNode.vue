@@ -66,7 +66,7 @@
               <div v-if="asset.type === 'image'" class="asset-thumbnail">
                 <img :src="asset.url" :alt="asset.name" />
                 <div v-if="asset.fromNode" class="node-badge">节点</div>
-                <button v-else class="asset-remove" @click.stop="removeAsset(asset.id)">×</button>
+                <button class="asset-remove" @click.stop="asset.fromNode ? removeConnectedAsset(asset.id) : removeAsset(asset.id)">×</button>
               </div>
 
               <!-- 视频缩略图 -->
@@ -78,7 +78,7 @@
                   </svg>
                 </div>
                 <div v-if="asset.fromNode" class="node-badge">节点</div>
-                <button v-else class="asset-remove" @click.stop="removeAsset(asset.id)">×</button>
+                <button class="asset-remove" @click.stop="asset.fromNode ? removeConnectedAsset(asset.id) : removeAsset(asset.id)">×</button>
               </div>
 
               <!-- 音频缩略图 -->
@@ -87,7 +87,7 @@
                   <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
                 </svg>
                 <div v-if="asset.fromNode" class="node-badge">节点</div>
-                <button v-else class="asset-remove" @click.stop="removeAsset(asset.id)">×</button>
+                <button class="asset-remove" @click.stop="asset.fromNode ? removeConnectedAsset(asset.id) : removeAsset(asset.id)">×</button>
               </div>
             </div>
 
@@ -542,6 +542,17 @@ const handleFileUpload = (event: Event) => {
 // 移除素材
 const removeAsset = (assetId: string) => {
   uploadedAssets.value = uploadedAssets.value.filter(a => a.id !== assetId)
+}
+
+// 删除连接的素材（断开边连接）
+const removeConnectedAsset = (assetId: string) => {
+  // assetId格式为 "node_XXX"，提取节点ID
+  const nodeId = assetId.replace('node_', '')
+  // 找到连接这个节点的边并删除
+  const edgeToRemove = nodeStore.edges.find(edge => edge.source === nodeId && edge.target === props.id)
+  if (edgeToRemove) {
+    nodeStore.removeEdge(edgeToRemove.id)
+  }
 }
 
 // 加载模型列表
