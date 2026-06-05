@@ -111,8 +111,10 @@
             @input="handleContentEdit"
             @keydown="handleKeyDown"
             @click.stop
+            @focus="() => {}"
             class="generator-input editable"
             data-placeholder="描述你想要生成的画面内容，输入 @ 引用素材..."
+            tabindex="0"
           ></div>
 
           <!-- @ 提及素材列表 -->
