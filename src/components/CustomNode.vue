@@ -546,6 +546,7 @@ onMounted(() => {
     editableRef.value.textContent = localPrompt.value
   }
   availableModels.value = getVideoModels()
+  availableImageModels.value = await getImageModels()
 })
 
 // 监听选中状态，选中时聚焦输入框
@@ -650,8 +651,9 @@ const removeConnectedAsset = (assetId: string) => {
 }
 
 // 加载模型列表
-onMounted(() => {
+onMounted(async () => {
   availableModels.value = getVideoModels()
+  availableImageModels.value = await getImageModels()
 })
 
 // 当前选中模型的能力
