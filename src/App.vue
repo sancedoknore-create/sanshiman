@@ -3,7 +3,29 @@
     <div class="top-bar">
       <div class="top-bar-left">
         <span class="logo">🎬 AI Video Canvas</span>
-        <span class="project-name">{{ projectName }}</span>
+        <input
+          v-if="isEditingName"
+          ref="nameInputRef"
+          v-model="projectName"
+          type="text"
+          class="project-name-input"
+          @blur="finishEditing"
+          @keyup.enter="finishEditing"
+          @keyup.escape="cancelEditing"
+          maxlength="50"
+        />
+        <span
+          v-else
+          class="project-name"
+          @click="startEditing"
+          title="点击修改项目名称"
+        >
+          {{ projectName }}
+          <svg class="edit-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+          </svg>
+        </span>
       </div>
       <div class="top-bar-right">
         <div class="ai-status" title="点击查看AI服务配置" @click="navigateTo('/settings')">
@@ -37,7 +59,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAIStore } from '@/stores/ai'
 
@@ -46,6 +68,30 @@ const route = useRoute()
 const aiStore = useAIStore()
 
 const projectName = ref('未命名项目')
+const isEditingName = ref(false)
+const nameInputRef = ref<HTMLInputElement>()
+const previousName = ref('')
+
+const startEditing = async () => {
+  previousName.value = projectName.value
+  isEditingName.value = true
+  await nextTick()
+  nameInputRef.value?.focus()
+  nameInputRef.value?.select()
+}
+
+const finishEditing = () => {
+  if (!projectName.value.trim()) {
+    projectName.value = previousName.value || '未命名项目'
+  }
+  isEditingName.value = false
+}
+
+const cancelEditing = () => {
+  projectName.value = previousName.value
+  isEditingName.value = false
+}
+
 const currentRoute = computed(() => route.path)
 
 const aiStatusIndicators = computed(() => {
@@ -116,6 +162,44 @@ const getStatusClass = (status: string): string => {
 .project-name {
   font-size: 14px;
   color: #888;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.project-name:hover {
+  color: #00D9FF;
+  background: rgba(0, 217, 255, 0.1);
+}
+
+.project-name:hover .edit-icon {
+  opacity: 1;
+}
+
+.edit-icon {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.project-name-input {
+  font-size: 14px;
+  color: #ffffff;
+  background: rgba(0, 217, 255, 0.1);
+  border: 1px solid #00D9FF;
+  border-radius: 4px;
+  padding: 4px 8px;
+  outline: none;
+  min-width: 200px;
+  font-family: inherit;
+}
+
+.project-name-input:focus {
+  background: rgba(0, 217, 255, 0.15);
+  box-shadow: 0 0 8px rgba(0, 217, 255, 0.4);
 }
 
 .top-bar-right {
