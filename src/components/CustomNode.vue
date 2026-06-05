@@ -221,101 +221,162 @@ const uploadedAssets = ref<Array<{ id: string; type: 'image' | 'video' | 'audio'
 const showAssetMention = ref(false)
 const mentionPosition = ref({ top: 0, left: 0 })
 const mentionFilter = ref('')
-const textareaRef = ref<HTMLTextAreaElement>()
+const editableRef = ref<HTMLDivElement>()
 
-// 聚焦textarea
-const focusTextarea = () => {
-  if (textareaRef.value) {
-    textareaRef.value.focus()
-    // 光标移到末尾
-    const len = textareaRef.value.value.length
-    textareaRef.value.setSelectionRange(len, len)
-  }
+// 处理contenteditable输入
+const handleContentEdit = (event: Event) => {
+  const div = event.target as HTMLDivElement
+
+  // 获取纯文本内容（用于保存）
+  localPrompt.value = extractTextContent(div)
+
+  // 检测@触发
+  checkForMention(div)
 }
 
-// 解析提示词，将@引用转换为可视化部分
-const promptParts = computed(() => {
-  if (!localPrompt.value) return []
-
-  const parts: Array<{ type: 'text' | 'mention'; content?: string; asset?: any }> = []
-  const mentionRegex = /@\[([^\]]+)\]\(([^)]+)\)/g
-  let lastIndex = 0
-  let match
-
-  while ((match = mentionRegex.exec(localPrompt.value)) !== null) {
-    // 添加 @ 前面的文本
-    if (match.index > lastIndex) {
-      parts.push({
-        type: 'text',
-        content: localPrompt.value.substring(lastIndex, match.index)
-      })
+// 提取纯文本和引用标记
+const extractTextContent = (div: HTMLDivElement): string => {
+  let text = ''
+  div.childNodes.forEach(node => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      text += node.textContent
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      const el = node as HTMLElement
+      if (el.classList.contains('asset-badge')) {
+        const assetId = el.getAttribute('data-asset-id')
+        const assetName = el.getAttribute('data-asset-name')
+        text += `@[${assetName}](${assetId})`
+      } else {
+        text += el.textContent
+      }
     }
+  })
+  return text
+}
 
-    // 添加提及徽章
-    const assetId = match[2]
-    const asset = allAssets.value.find(a => a.id === assetId)
-    parts.push({
-      type: 'mention',
-      asset
-    })
+// 检测@触发提及
+const checkForMention = (div: HTMLDivElement) => {
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0) return
 
-    lastIndex = match.index + match[0].length
+  const range = sel.getRangeAt(0)
+  const textNode = range.startContainer
+
+  if (textNode.nodeType === Node.TEXT_NODE) {
+    const text = textNode.textContent || ''
+    const offset = range.startOffset
+    const textBefore = text.substring(0, offset)
+    const lastAtIndex = textBefore.lastIndexOf('@')
+
+    if (lastAtIndex !== -1) {
+      const textAfter = textBefore.substring(lastAtIndex + 1)
+      if (!textAfter.includes(' ') && textAfter.length <= 20) {
+        mentionFilter.value = textAfter
+        showAssetMention.value = allAssets.value.length > 0
+
+        // 计算位置
+        const rect = div.getBoundingClientRect()
+        const card = div.closest('.generator-card') as HTMLElement
+        if (card) {
+          const cardRect = card.getBoundingClientRect()
+          mentionPosition.value = {
+            top: rect.top - cardRect.top - 210,
+            left: rect.left - cardRect.left + 10
+          }
+        }
+        return
+      }
+    }
   }
 
-  // 添加剩余文本
-  if (lastIndex < localPrompt.value.length) {
-    parts.push({
-      type: 'text',
-      content: localPrompt.value.substring(lastIndex)
-    })
+  showAssetMention.value = false
+}
+
+// 处理按键
+const handleKeyDown = (event: KeyboardEvent) => {
+  event.stopPropagation()
+}
+
+// 插入素材徽章
+const insertAssetBadge = (asset: any) => {
+  const div = editableRef.value
+  if (!div) return
+
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0) return
+
+  const range = sel.getRangeAt(0)
+
+  // 删除@和已输入的文字
+  const textNode = range.startContainer
+  if (textNode.nodeType === Node.TEXT_NODE && textNode.textContent) {
+    const offset = range.startOffset
+    const text = textNode.textContent
+    const lastAtIndex = text.lastIndexOf('@', offset - 1)
+
+    if (lastAtIndex !== -1) {
+      range.setStart(textNode, lastAtIndex)
+      range.deleteContents()
+    }
   }
 
-  return parts
+  // 创建徽章元素
+  const badge = document.createElement('span')
+  badge.className = 'asset-badge'
+  badge.contentEditable = 'false'
+  badge.setAttribute('data-asset-id', asset.id)
+  badge.setAttribute('data-asset-name', asset.name)
+
+  // 添加缩略图/图标
+  if (asset.type === 'image') {
+    const img = document.createElement('img')
+    img.src = asset.url
+    img.className = 'badge-thumbnail'
+    badge.appendChild(img)
+  } else if (asset.type === 'video') {
+    badge.innerHTML += '<svg class="badge-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4.66699 2.64248C4.66717 1.82358 5.59736 1.35167 6.25781 1.83584L13.5674 7.19619C14.1117 7.59579 14.1118 8.40897 13.5674 8.8085L6.25781 14.1688C5.59734 14.6528 4.6671 14.1811 4.66699 13.3622V2.64248Z"/></svg>'
+  } else {
+    badge.innerHTML += '<svg class="badge-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>'
+  }
+
+  const nameSpan = document.createElement('span')
+  nameSpan.className = 'badge-name'
+  nameSpan.textContent = asset.name
+  badge.appendChild(nameSpan)
+
+  // 插入徽章和空格
+  range.insertNode(badge)
+  range.collapse(false)
+
+  const space = document.createTextNode(' ')
+  range.insertNode(space)
+  range.setStartAfter(space)
+  range.collapse(true)
+  sel.removeAllRanges()
+  sel.addRange(range)
+
+  showAssetMention.value = false
+
+  // 更新localPrompt
+  localPrompt.value = extractTextContent(div)
+  updatePrompt()
+}
+
+// 过滤素材列表
+const filteredAssets = computed(() => {
+  if (!mentionFilter.value) return allAssets.value
+  return allAssets.value.filter(asset =>
+    asset.name.toLowerCase().includes(mentionFilter.value.toLowerCase())
+  )
 })
 
-// 处理输入框输入
-const handlePromptInput = (event: Event) => {
-  const textarea = event.target as HTMLTextAreaElement
-  const cursorPos = textarea.selectionStart
-  const textBeforeCursor = textarea.value.substring(0, cursorPos)
-
-  console.log('Input:', textBeforeCursor, 'Assets:', allAssets.value.length)
-
-  // 检测 @ 符号
-  const lastAtIndex = textBeforeCursor.lastIndexOf('@')
-  if (lastAtIndex !== -1) {
-    const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1)
-    console.log('After @:', textAfterAt, 'Has assets:', allAssets.value.length > 0)
-    // 如果 @ 后面没有空格，显示提及列表
-    if (!textAfterAt.includes(' ') && !textAfterAt.includes('\n')) {
-      mentionFilter.value = textAfterAt
-      showAssetMention.value = allAssets.value.length > 0
-
-      // 计算弹出位置（相对于生成卡片）
-      const card = textarea.closest('.generator-card') as HTMLElement
-      if (card) {
-        const cardRect = card.getBoundingClientRect()
-        const textareaRect = textarea.getBoundingClientRect()
-
-        mentionPosition.value = {
-          top: textareaRect.top - cardRect.top - 210, // 在输入框上方，相对于卡片
-          left: textareaRect.left - cardRect.left + 10
-        }
-      } else {
-        const rect = textarea.getBoundingClientRect()
-        mentionPosition.value = {
-          top: 10,
-          left: 10
-        }
-      }
-      console.log('Show mention list:', showAssetMention.value, 'FilteredAssets:', filteredAssets.value.length)
-    } else {
-      showAssetMention.value = false
-    }
-  } else {
-    showAssetMention.value = false
+// 初始化
+onMounted(() => {
+  if (editableRef.value && localPrompt.value) {
+    editableRef.value.textContent = localPrompt.value
   }
-}
+  availableModels.value = getVideoModels()
+})
 
 // 插入素材引用
 const insertAssetMention = (asset: any) => {
