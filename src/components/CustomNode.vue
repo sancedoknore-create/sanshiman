@@ -3,22 +3,37 @@
     <!-- 节点主体 - 动态尺寸 -->
     <div class="node-main" @click.stop="selectNode" :style="{ width: nodeSize.width + 'px', height: nodeSize.height + 'px' }">
       <div class="node-content">
-        <!-- SVG图标 -->
-        <div class="node-icon-large">
-          <!-- AI绘图节点 - 图片图标 -->
-          <svg v-if="type === 'ai-image'" xmlns="http://www.w3.org/2000/svg" width="90" height="90" viewBox="0 0 66 66" fill="currentColor">
-            <path d="M26.4648 19.2146C26.9874 18.431 28.1396 18.4309 28.6621 19.2146L40.8262 37.4607L44.5361 32.0056C45.06 31.2354 46.1959 31.2353 46.7197 32.0056L55.4453 44.8376C56.041 45.7138 55.4139 46.8998 54.3545 46.9001H10.4746C9.42048 46.9001 8.79159 45.7256 9.37598 44.8484L26.4648 19.2146Z"/>
-            <circle cx="42.24" cy="20.46" r="3.96"/>
-          </svg>
+        <!-- 素材引用节点 - 显示上传的素材 -->
+        <template v-if="type === 'asset-ref' && data.assetUrl">
+          <img v-if="data.assetType === 'image'" :src="data.assetUrl" class="asset-preview" />
+          <video v-else-if="data.assetType === 'video'" :src="data.assetUrl" class="asset-preview" controls />
+          <div v-else-if="data.assetType === 'audio'" class="audio-preview">
+            <svg xmlns="http://www.w3.org/2000/svg" width="90" height="90" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+            </svg>
+            <audio :src="data.assetUrl" controls class="audio-controls" />
+          </div>
+        </template>
 
-          <!-- AI视频节点 - 播放图标 -->
-          <svg v-else-if="type === 'ai-video'" xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M4.66699 2.64248C4.66717 1.82358 5.59736 1.35167 6.25781 1.83584L13.5674 7.19619C14.1117 7.59579 14.1118 8.40897 13.5674 8.8085L6.25781 14.1688C5.59734 14.6528 4.6671 14.1811 4.66699 13.3622V2.64248Z"/>
-          </svg>
+        <!-- 其他节点类型 -->
+        <template v-else>
+          <!-- SVG图标 -->
+          <div class="node-icon-large">
+            <!-- AI绘图节点 - 图片图标 -->
+            <svg v-if="type === 'ai-image'" xmlns="http://www.w3.org/2000/svg" width="90" height="90" viewBox="0 0 66 66" fill="currentColor">
+              <path d="M26.4648 19.2146C26.9874 18.431 28.1396 18.4309 28.6621 19.2146L40.8262 37.4607L44.5361 32.0056C45.06 31.2354 46.1959 31.2353 46.7197 32.0056L55.4453 44.8376C56.041 45.7138 55.4139 46.8998 54.3545 46.9001H10.4746C9.42048 46.9001 8.79159 45.7256 9.37598 44.8484L26.4648 19.2146Z"/>
+              <circle cx="42.24" cy="20.46" r="3.96"/>
+            </svg>
 
-          <!-- 其他节点 - 使用emoji -->
-          <span v-else>{{ icon }}</span>
-        </div>
+            <!-- AI视频节点 - 播放图标 -->
+            <svg v-else-if="type === 'ai-video'" xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M4.66699 2.64248C4.66717 1.82358 5.59736 1.35167 6.25781 1.83584L13.5674 7.19619C14.1117 7.59579 14.1118 8.40897 13.5674 8.8085L6.25781 14.1688C5.59734 14.6528 4.6671 14.1811 4.66699 13.3622V2.64248Z"/>
+            </svg>
+
+            <!-- 其他节点 - 使用emoji -->
+            <span v-else>{{ icon }}</span>
+          </div>
+        </template>
       </div>
 
       <!-- 状态指示 -->
