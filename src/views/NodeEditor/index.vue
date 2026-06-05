@@ -18,7 +18,7 @@
     >
       <Background pattern-color="#00D9FF" :gap="20" :size="1" />
       <Controls />
-      <MiniMap />
+      <MiniMap :pannable="true" :zoomable="true" />
     </VueFlow>
 
     <!-- 对齐辅助线 -->
