@@ -8,6 +8,10 @@ export interface NodeData {
   progress?: number
   output?: any
   error?: string
+  // 节点输出
+  outputImage?: string // 图片节点输出
+  outputVideo?: string // 视频节点输出
+  outputAudio?: string // 音频节点输出
   // AI绘图节点参数
   prompt?: string
   negativePrompt?: string
@@ -78,11 +82,31 @@ export const useNodeStore = defineStore('node', () => {
         timestamp: Date.now(),
       }
 
-      updateNodeData(nodeId, {
-        status: 'completed',
-        progress: 100,
-        output,
-      })
+      // 根据节点类型设置不同的输出
+      const node = nodes.value.find(n => n.id === nodeId)
+      if (node?.type === 'ai-image') {
+        // AI绘图节点 - 设置outputImage
+        updateNodeData(nodeId, {
+          status: 'completed',
+          progress: 100,
+          output,
+          outputImage: 'https://picsum.photos/512/512?random=' + Date.now(), // 随机图片
+        })
+      } else if (node?.type === 'ai-video') {
+        // AI视频节点 - 设置outputVideo
+        updateNodeData(nodeId, {
+          status: 'completed',
+          progress: 100,
+          output,
+          outputVideo: 'https://via.placeholder.com/512x288', // 视频占位图
+        })
+      } else {
+        updateNodeData(nodeId, {
+          status: 'completed',
+          progress: 100,
+          output,
+        })
+      }
 
       // 触发下游节点
       const downstreamEdges = edges.value.filter(e => e.source === nodeId)
