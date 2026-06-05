@@ -104,39 +104,16 @@
             </label>
           </div>
 
-          <!-- 提示词输入 -->
-          <textarea
-            ref="textareaRef"
-            v-model="localPrompt"
-            @input="handlePromptInput"
-            @change="updatePrompt"
+          <!-- 富文本提示词输入 -->
+          <div
+            ref="editableRef"
+            contenteditable="true"
+            @input="handleContentEdit"
+            @keydown="handleKeyDown"
             @click.stop
-            @keydown.stop
-            placeholder="描述你想要生成的画面内容，输入 @ 引用素材..."
-            class="generator-input"
-            rows="3"
-          ></textarea>
-
-          <!-- 已引用的素材预览 -->
-          <div v-if="referencedAssets.length > 0" class="referenced-assets">
-            <div class="referenced-label">已引用素材：</div>
-            <div class="referenced-list">
-              <div
-                v-for="asset in referencedAssets"
-                :key="asset.id"
-                class="referenced-item"
-              >
-                <div class="referenced-thumbnail">
-                  <img v-if="asset.type === 'image'" :src="asset.url" alt="" />
-                  <video v-else-if="asset.type === 'video'" :src="asset.url" />
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-                  </svg>
-                </div>
-                <span class="referenced-name">{{ asset.name }}</span>
-              </div>
-            </div>
-          </div>
+            class="generator-input editable"
+            data-placeholder="描述你想要生成的画面内容，输入 @ 引用素材..."
+          ></div>
 
           <!-- @ 提及素材列表 -->
           <transition name="mention">
@@ -150,7 +127,7 @@
                 v-for="asset in filteredAssets"
                 :key="asset.id"
                 class="mention-item"
-                @click="insertAssetMention(asset)"
+                @click="insertAssetBadge(asset)"
               >
                 <div class="mention-thumbnail">
                   <img v-if="asset.type === 'image'" :src="asset.url" alt="" />
