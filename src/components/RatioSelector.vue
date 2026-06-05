@@ -29,7 +29,7 @@
         </div>
 
         <div class="dropdown-section">
-          <div class="section-title">分辨率</div>
+          <div class="section-title">清晰度</div>
           <div class="resolution-list">
             <button
               v-for="res in availableResolutions"
@@ -40,26 +40,6 @@
             >
               {{ res }}
             </button>
-          </div>
-        </div>
-
-        <div class="dropdown-section">
-          <div class="section-title">时长 ({{ selectedDuration }}秒)</div>
-          <div class="duration-slider" @mousedown.stop @touchstart.stop>
-            <input
-              type="range"
-              v-model.number="selectedDuration"
-              :min="minDuration"
-              :max="maxDuration"
-              step="1"
-              class="slider"
-              @mousedown.stop
-              @touchstart.stop
-            />
-            <div class="slider-labels">
-              <span>{{ minDuration }}s</span>
-              <span>{{ maxDuration }}s</span>
-            </div>
           </div>
         </div>
 
@@ -109,8 +89,7 @@ const emit = defineEmits<{
 
 const isOpen = ref(false)
 const selectorRef = ref<HTMLElement>()
-const selectedResolution = ref('1080P')
-const selectedDuration = ref(15) // 改为数字
+const selectedResolution = ref('2K')
 const enableAudio = ref(false) // 音频开关
 
 const SELECTOR_ID = 'ratio-selector'
@@ -144,7 +123,7 @@ const availableRatios = computed(() => {
   return ratioOptions.filter(opt => props.capabilities!.ratios!.includes(opt.value))
 })
 
-// 根据模型能力过滤可用的分辨率
+// 根据模型能力过滤可用的清晰度
 const availableResolutions = computed(() => {
   if (!props.capabilities?.resolutions) {
     return resolutions
@@ -152,14 +131,10 @@ const availableResolutions = computed(() => {
   return resolutions.filter(res => props.capabilities!.resolutions!.includes(res))
 })
 
-// 根据模型能力设置时长范围
-const minDuration = computed(() => props.capabilities?.durationRange?.min ?? 4)
-const maxDuration = computed(() => props.capabilities?.durationRange?.max ?? 15)
-
 // 根据模型能力决定是否显示音频开关
 const audioAvailable = computed(() => props.capabilities?.audioGeneration ?? true)
 
-const resolutions = ['480P', '720P', '1080P']
+const resolutions = ['1K', '2K', '4K']
 
 const selectedOption = computed(() => {
   return availableRatios.value.find(opt => opt.value === props.modelValue) || availableRatios.value[0]
@@ -167,7 +142,7 @@ const selectedOption = computed(() => {
 
 const selectedIcon = computed(() => selectedOption.value.icon)
 const selectedLabel = computed(() => {
-  return `${selectedOption.value.label} · ${selectedResolution.value} · ${selectedDuration.value}s`
+  return `${selectedOption.value.label} · ${selectedResolution.value}`
 })
 
 function toggle() {
