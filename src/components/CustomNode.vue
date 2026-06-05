@@ -257,7 +257,6 @@ const nodeStore = useNodeStore()
 
 const localPrompt = ref(props.data.prompt || '')
 const isSelected = computed(() => nodeStore.selectedNodeId === props.id)
-const isExpanded = ref(false) // 卡片展开状态
 const currentTab = ref('text-to-video')
 const selectedRatio = ref('16:9')
 const selectedModel = ref('seedance-2.0')
@@ -808,13 +807,6 @@ const statusText = computed(() => {
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   z-index: 10;
-  transition: all 0.3s ease;
-  padding: 16px;
-  padding-top: 40px;
-}
-
-.generator-card.expanded {
-  width: 400px;
 }
 
 /* 展开按钮 */
@@ -1139,13 +1131,6 @@ const statusText = computed(() => {
   white-space: pre-wrap;
   word-wrap: break-word;
   cursor: text;
-  min-height: 80px;
-  max-height: 80px;
-  transition: max-height 0.3s ease;
-}
-
-.generator-input.editable.expanded {
-  max-height: 400px;
 }
 
 .generator-input.editable * {
