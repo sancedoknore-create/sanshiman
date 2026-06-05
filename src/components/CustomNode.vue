@@ -37,7 +37,7 @@
               v-for="tab in videoTabs"
               :key="tab.value"
               :class="['tab-btn', { active: currentTab === tab.value, disabled: tab.disabled }]"
-              @click.stop="currentTab = tab.value"
+              @click.stop="!tab.disabled && (currentTab = tab.value)"
               :disabled="tab.disabled"
             >
               {{ tab.label }}
@@ -108,14 +108,28 @@ const localPrompt = ref(props.data.prompt || '')
 const isSelected = computed(() => nodeStore.selectedNodeId === props.id)
 const currentTab = ref('text-to-video')
 
-// 视频节点选项卡
-const videoTabs = [
+// 检查是否有图片节点连接
+const hasImageInput = computed(() => {
+  const incomingEdges = nodeStore.edges.filter(edge => edge.target === props.id)
+  return incomingEdges.some(edge => {
+    const sourceNode = nodeStore.nodes.find(n => n.id === edge.source)
+    return sourceNode?.type === 'ai-image'
+  })
+})
+
+// 检查是否有任何输入连接
+const hasAnyInput = computed(() => {
+  return nodeStore.edges.some(edge => edge.target === props.id)
+})
+
+// 视频节点选项卡 - 根据输入动态启用
+const videoTabs = computed(() => [
   { label: '文生视频', value: 'text-to-video', disabled: false },
-  { label: '全能参考', value: 'universal-ref', disabled: true },
-  { label: '图生视频', value: 'image-to-video', disabled: true },
-  { label: '首尾帧', value: 'first-last-frame', disabled: true },
-  { label: '图片参考', value: 'image-ref', disabled: true },
-]
+  { label: '全能参考', value: 'universal-ref', disabled: !hasAnyInput.value },
+  { label: '图生视频', value: 'image-to-video', disabled: !hasImageInput.value },
+  { label: '首尾帧', value: 'first-last-frame', disabled: !hasImageInput.value },
+  { label: '图片参考', value: 'image-ref', disabled: !hasImageInput.value },
+])
 
 watch(() => props.data.prompt, (newPrompt) => {
   localPrompt.value = newPrompt || ''
