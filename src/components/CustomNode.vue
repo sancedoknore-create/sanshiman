@@ -809,37 +809,6 @@ const statusText = computed(() => {
   z-index: 10;
 }
 
-/* 展开按钮 */
-.expand-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 1px solid rgba(0, 217, 255, 0.3);
-  background: rgba(38, 38, 38, 0.95);
-  color: rgba(0, 217, 255, 0.7);
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  z-index: 100;
-}
-
-.expand-btn:hover {
-  background: rgba(0, 217, 255, 0.15);
-  color: #00D9FF;
-  border-color: #00D9FF;
-}
-
-.expand-btn svg {
-  width: 14px;
-  height: 14px;
-}
-
 .generator-content {
   padding: 16px;
   position: relative;
