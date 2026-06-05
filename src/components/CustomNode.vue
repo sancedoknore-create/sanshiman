@@ -962,6 +962,83 @@ const statusText = computed(() => {
   color: #666;
 }
 
+/* 提示词区域 */
+.prompt-area {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.prompt-display {
+  width: 100%;
+  min-height: 80px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  cursor: text;
+  transition: border-color 0.2s;
+}
+
+.prompt-display:hover {
+  border-color: rgba(0, 217, 255, 0.3);
+}
+
+.prompt-placeholder {
+  color: #666;
+  pointer-events: none;
+}
+
+.hidden-textarea {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: all;
+  z-index: 1;
+}
+
+/* 素材徽章 */
+.asset-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: rgba(0, 217, 255, 0.15);
+  border: 1px solid rgba(0, 217, 255, 0.3);
+  border-radius: 12px;
+  color: #00D9FF;
+  font-size: 12px;
+  vertical-align: middle;
+  margin: 0 2px;
+}
+
+.badge-thumbnail {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  object-fit: cover;
+}
+
+.badge-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.badge-name {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .generator-footer {
   display: flex;
   align-items: center;
