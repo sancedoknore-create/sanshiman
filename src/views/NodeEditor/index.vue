@@ -336,7 +336,7 @@ const handleNodeAction = (action: string) => {
       break
     case 'edit':
       nodeStore.selectNode(node.id)
-      showProperties.value = true
+      // 展开节点底部的生成卡片
       break
     case 'copy':
       // TODO: 实现复制功能
@@ -344,9 +344,6 @@ const handleNodeAction = (action: string) => {
       break
     case 'delete':
       nodeStore.removeNode(node.id)
-      if (nodeStore.selectedNodeId === node.id) {
-        showProperties.value = false
-      }
       break
   }
 }
@@ -369,11 +366,10 @@ const getNodeLabel = (type: string): string => {
   height: 100%;
   background: #020308;
   position: relative;
-  display: flex;
 }
 
 .vue-flow-container {
-  flex: 1;
+  width: 100%;
   height: 100%;
 }
 
@@ -399,19 +395,5 @@ const getNodeLabel = (type: string): string => {
 
 :deep(.vue-flow__controls button:hover) {
   background: rgba(0, 217, 255, 0.2);
-}
-
-/* 属性面板滑入动画 */
-.slide-enter-active,
-.slide-leave-active {
-  transition: transform 0.3s ease;
-}
-
-.slide-enter-from {
-  transform: translateX(100%);
-}
-
-.slide-leave-to {
-  transform: translateX(100%);
 }
 </style>
