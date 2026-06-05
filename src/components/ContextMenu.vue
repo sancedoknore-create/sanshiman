@@ -108,19 +108,20 @@ watch(() => props.visible, async (newVisible) => {
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 9999;
+  z-index: 10000;
   background: transparent;
 }
 
 .context-menu {
   position: fixed;
-  background: rgba(2, 3, 8, 0.95);
-  border: 1px solid #00D9FF;
+  background: rgba(2, 3, 8, 0.98);
+  border: 2px solid #00D9FF;
   border-radius: 8px;
   padding: 4px 0;
   min-width: 200px;
-  box-shadow: 0 4px 20px rgba(0, 217, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 217, 255, 0.5);
   backdrop-filter: blur(10px);
+  z-index: 10001;
 }
 
 .menu-item {
