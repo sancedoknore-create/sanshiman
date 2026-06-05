@@ -91,7 +91,7 @@ watch(nodes, (newNodes) => {
   })
 }, { deep: true })
 
-// 监听连线创建
+// 监听连线创建（拖拽手柄）
 onConnect((connection) => {
   const edge: Edge = {
     id: `e${connection.source}-${connection.target}`,
@@ -100,6 +100,46 @@ onConnect((connection) => {
     type: 'animated',
   }
   nodeStore.addEdge(edge)
+})
+
+// 监听连线开始拖拽（显示节点选择菜单）
+const { onConnectStart, onConnectEnd } = useVueFlow()
+const connectingFrom = ref<{ nodeId: string; handleType: string } | null>(null)
+
+onConnectStart((params) => {
+  if (params.nodeId && params.handleType) {
+    connectingFrom.value = {
+      nodeId: params.nodeId,
+      handleType: params.handleType,
+    }
+  }
+})
+
+onConnectEnd((event) => {
+  // 如果没有连接到目标节点，显示创建节点菜单
+  if (connectingFrom.value && event instanceof MouseEvent) {
+    const targetElement = event.target as HTMLElement
+    // 检查是否点击到了空白画布
+    if (targetElement.classList.contains('vue-flow__pane') ||
+        targetElement.classList.contains('vue-flow__background')) {
+      contextMenu.visible = true
+      contextMenu.x = event.clientX
+      contextMenu.y = event.clientY
+      contextMenu.items = [
+        { label: '添加AI绘图节点', icon: '🎨', action: 'add-ai-image' },
+        { label: '添加AI视频节点', icon: '🎬', action: 'add-ai-video' },
+        { label: '添加3D导演台节点', icon: '🎭', action: 'add-3d-scene' },
+        { label: '添加资产引用节点', icon: '📦', action: 'add-asset-ref' },
+        { label: '添加后处理节点', icon: '⚡', action: 'add-post-process' },
+      ]
+      contextMenu.data = {
+        clientX: event.clientX,
+        clientY: event.clientY,
+        connectFrom: connectingFrom.value,
+      }
+    }
+  }
+  connectingFrom.value = null
 })
 
 // 初始化示例节点
@@ -206,7 +246,7 @@ const onContextMenuSelect = (action: string) => {
 
 // 添加节点
 const addNodeByType = (type: string) => {
-  const { clientX, clientY } = contextMenu.data
+  const { clientX, clientY, connectFrom } = contextMenu.data
   const position = project({ x: clientX, y: clientY })
 
   const nodeId = `node_${Date.now()}`
@@ -228,8 +268,19 @@ const addNodeByType = (type: string) => {
     },
   }
 
-  // 只添加到nodeStore，Vue Flow通过v-model自动同步
+  // 添加节点到store
   nodeStore.addNode(newNode)
+
+  // 如果是从连接点拖拽创建的，自动创建连线
+  if (connectFrom) {
+    const edge: Edge = {
+      id: `e${connectFrom.nodeId}-${nodeId}`,
+      source: connectFrom.handleType === 'source' ? connectFrom.nodeId : nodeId,
+      target: connectFrom.handleType === 'source' ? nodeId : connectFrom.nodeId,
+      type: 'animated',
+    }
+    nodeStore.addEdge(edge)
+  }
 }
 
 // 节点点击
