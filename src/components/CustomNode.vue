@@ -1100,6 +1100,100 @@ const statusText = computed(() => {
   transform: rotate(90deg);
 }
 
+/* 图片缩略图 */
+.image-thumbnail {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.preview-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 70px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 217, 255, 0.3);
+  border-radius: 50%;
+  backdrop-filter: blur(4px);
+  transition: all 0.3s;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.image-thumbnail:hover .preview-overlay {
+  opacity: 1;
+  background: rgba(0, 217, 255, 0.5);
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.preview-overlay svg {
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+}
+
+/* 图片预览弹窗 */
+.image-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s;
+}
+
+.image-modal-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-modal-preview {
+  max-width: 100%;
+  max-height: 90vh;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 217, 255, 0.3);
+}
+
+.image-modal-close {
+  position: absolute;
+  top: -50px;
+  right: 0;
+  width: 40px;
+  height: 40px;
+  background: rgba(0, 217, 255, 0.2);
+  border: 1px solid #00D9FF;
+  border-radius: 50%;
+  color: #00D9FF;
+  font-size: 28px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  line-height: 1;
+  padding: 0;
+}
+
+.image-modal-close:hover {
+  background: rgba(0, 217, 255, 0.4);
+  transform: rotate(90deg);
+}
+
 .node-title-main {
   font-size: 16px;
   color: #ffffff;
