@@ -45,7 +45,7 @@
 
         <div class="dropdown-section">
           <div class="section-title">时长 ({{ selectedDuration }}秒)</div>
-          <div class="duration-slider">
+          <div class="duration-slider" @mousedown.stop @touchstart.stop>
             <input
               type="range"
               v-model.number="selectedDuration"
@@ -53,6 +53,8 @@
               :max="maxDuration"
               step="1"
               class="slider"
+              @mousedown.stop
+              @touchstart.stop
             />
             <div class="slider-labels">
               <span>{{ minDuration }}s</span>
@@ -190,6 +192,7 @@ onUnmounted(() => {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   padding: 12px;
   z-index: 100;
+  user-select: none;
 }
 
 .dropdown-section {
