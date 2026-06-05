@@ -1,0 +1,259 @@
+<template>
+  <div class="model-selector" ref="selectorRef">
+    <button class="model-btn" @click.stop="toggle">
+      <span class="model-icon">🤖</span>
+      <span class="model-text">{{ selectedModel?.name || '选择模型' }}</span>
+      <svg class="chevron" :class="{ open: isOpen }" width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M6.19819 0.117182C6.3544 -0.039028 6.60839 -0.039028 6.7646 0.117182L7.18843 0.54101C7.34464 0.69722 7.34464 0.951206 7.18843 1.10742L4.14741 4.14843C3.87403 4.42145 3.43043 4.42165 3.15718 4.14843L0.117137 1.10742C-0.039034 0.9512 -0.039057 0.697203 0.117137 0.54101L0.540965 0.117182C0.697193 -0.0390471 0.951169 -0.039074 1.10737 0.117182L3.65229 2.66308L6.19819 0.117182Z"/>
+      </svg>
+    </button>
+
+    <transition name="dropdown">
+      <div v-if="isOpen" class="model-dropdown">
+        <div class="dropdown-section">
+          <div class="section-title">视频模型</div>
+          <div class="model-list">
+            <button
+              v-for="model in models"
+              :key="model.id"
+              class="model-option"
+              :class="{ active: modelValue === model.id }"
+              @click.stop="selectModel(model)"
+            >
+              <div class="model-info">
+                <div class="model-name">{{ model.name }}</div>
+                <div class="model-desc">{{ model.description }}</div>
+              </div>
+              <span v-if="model.badge" class="model-badge">{{ model.badge }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+
+interface VideoModel {
+  id: string
+  name: string
+  description: string
+  badge?: string
+}
+
+interface Props {
+  modelValue?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  modelValue: 'seedance-2.0'
+})
+
+const emit = defineEmits<{
+  'update:modelValue': [value: string]
+}>()
+
+const isOpen = ref(false)
+const selectorRef = ref<HTMLElement>()
+
+// 模型列表 - 可以从API动态加载
+const models: VideoModel[] = [
+  {
+    id: 'seedance-2.0',
+    name: 'Seedance 2.0',
+    description: '高质量视频生成',
+    badge: 'VIP'
+  },
+  {
+    id: 'seedance-1.5',
+    name: 'Seedance 1.5',
+    description: '快速生成',
+  },
+  {
+    id: 'runway-gen3',
+    name: 'Runway Gen-3',
+    description: '电影级画质',
+    badge: 'PRO'
+  },
+  {
+    id: 'pika-1.0',
+    name: 'Pika 1.0',
+    description: '创意风格',
+  },
+]
+
+const selectedModel = computed(() => {
+  return models.find(m => m.id === props.modelValue)
+})
+
+function toggle() {
+  isOpen.value = !isOpen.value
+}
+
+function selectModel(model: VideoModel) {
+  emit('update:modelValue', model.id)
+  isOpen.value = false
+}
+
+function handleClickOutside(event: MouseEvent) {
+  if (selectorRef.value && !selectorRef.value.contains(event.target as Node)) {
+    isOpen.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
+</script>
+
+<style scoped>
+.model-selector {
+  position: relative;
+}
+
+.model-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 180px;
+}
+
+.model-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.model-icon {
+  font-size: 16px;
+}
+
+.model-text {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chevron {
+  color: #888;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.chevron.open {
+  transform: rotate(180deg);
+}
+
+.model-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 320px;
+  background: #262626;
+  border: 1px solid rgba(0, 217, 255, 0.3);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  padding: 12px;
+  z-index: 100;
+  user-select: none;
+}
+
+.dropdown-section {
+  margin-bottom: 0;
+}
+
+.section-title {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 8px;
+  padding-left: 4px;
+}
+
+.model-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.model-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.model-option:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(0, 217, 255, 0.3);
+}
+
+.model-option.active {
+  background: rgba(0, 217, 255, 0.1);
+  border-color: #00D9FF;
+}
+
+.model-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.model-name {
+  font-size: 13px;
+  color: #ffffff;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.model-desc {
+  font-size: 11px;
+  color: #888;
+}
+
+.model-badge {
+  padding: 2px 8px;
+  background: rgba(180, 50, 255, 0.2);
+  border: 1px solid #B432FF;
+  border-radius: 4px;
+  color: #B432FF;
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* 下拉动画 */
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition: all 0.2s ease;
+}
+
+.dropdown-enter-from {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+</style>
