@@ -55,8 +55,12 @@
 
           <div class="generator-footer">
             <div class="generator-options">
-              <button class="option-btn">
-                <span>{{ type === 'ai-image' ? '1024x1024' : '16:9' }}</span>
+              <!-- 视频节点使用比例选择器 -->
+              <RatioSelector v-if="type === 'ai-video'" v-model="selectedRatio" />
+
+              <!-- 图片节点使用简单按钮 -->
+              <button v-else class="option-btn">
+                <span>1024x1024</span>
                 <span class="chevron">▼</span>
               </button>
             </div>
@@ -89,6 +93,7 @@
 import { ref, computed, watch } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
 import { useNodeStore } from '@/stores/node'
+import RatioSelector from './RatioSelector.vue'
 
 interface Props {
   id: string
@@ -107,6 +112,7 @@ const nodeStore = useNodeStore()
 const localPrompt = ref(props.data.prompt || '')
 const isSelected = computed(() => nodeStore.selectedNodeId === props.id)
 const currentTab = ref('text-to-video')
+const selectedRatio = ref('16:9')
 
 // 检查是否有图片节点连接
 const hasImageInput = computed(() => {
