@@ -63,7 +63,7 @@ const path = computed(() => {
 
 const edgeStyle = computed(() => ({
   stroke: 'url(#edge-gradient)',
-  strokeWidth: 2,
+  strokeWidth: 3,
   fill: 'none',
   filter: 'drop-shadow(0 0 4px #00D9FF)',
 }))
