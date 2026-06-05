@@ -208,10 +208,10 @@
                 <RatioSelector v-model="selectedRatio" :capabilities="currentModelCapabilities" />
               </template>
 
-              <!-- 图片节点：模型 + 尺寸 + 风格选择器 -->
+              <!-- 图片节点：模型 + 比例 + 风格选择器 -->
               <template v-else-if="type === 'ai-image'">
                 <ModelSelector v-model="selectedModel" :models="imageModels" />
-                <SizeSelector v-model="selectedSize" />
+                <RatioSelector v-model="selectedRatio" :capabilities="imageRatioCapabilities" />
                 <StyleSelector v-model="selectedStyle" />
               </template>
 
@@ -332,7 +332,6 @@ import { Handle, Position } from '@vue-flow/core'
 import { useNodeStore } from '@/stores/node'
 import RatioSelector from './RatioSelector.vue'
 import ModelSelector from './ModelSelector.vue'
-import SizeSelector from './SizeSelector.vue'
 import StyleSelector from './StyleSelector.vue'
 import { getVideoModels, type VideoModel } from '@/services/videoModelService'
 
@@ -355,8 +354,15 @@ const isSelected = computed(() => nodeStore.selectedNodeId === props.id)
 const currentTab = ref('text-to-video')
 const selectedRatio = ref('16:9')
 const selectedModel = ref('seedance-2.0')
-const selectedSize = ref('1024x1024')
 const selectedStyle = ref('realistic')
+
+// 图片节点的比例能力（不限制时长和音频）
+const imageRatioCapabilities = {
+  ratios: ['1:1', '16:9', '9:16', '4:3', '3:4', '21:9', '3:2', '2:3'],
+  resolutions: ['512p', '1024p', '2K'],
+  hasAudio: false,
+  maxDuration: 0,
+}
 const availableModels = ref<VideoModel[]>([])
 const uploadedAssets = ref<Array<{ id: string; type: 'image' | 'video' | 'audio'; url: string; name: string }>>([])
 
