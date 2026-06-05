@@ -45,12 +45,13 @@
           </div>
 
           <!-- 素材缩略图区域 -->
-          <div v-if="type === 'ai-video' && uploadedAssets.length > 0" class="assets-preview">
-            <div class="asset-item" v-for="asset in uploadedAssets" :key="asset.id">
+          <div v-if="type === 'ai-video' && allAssets.length > 0" class="assets-preview">
+            <div class="asset-item" v-for="asset in allAssets" :key="asset.id">
               <!-- 图片缩略图 -->
               <div v-if="asset.type === 'image'" class="asset-thumbnail">
                 <img :src="asset.url" :alt="asset.name" />
-                <button class="asset-remove" @click.stop="removeAsset(asset.id)">×</button>
+                <div v-if="asset.fromNode" class="node-badge">节点</div>
+                <button v-else class="asset-remove" @click.stop="removeAsset(asset.id)">×</button>
               </div>
 
               <!-- 视频缩略图 -->
@@ -61,7 +62,8 @@
                     <path d="M4.66699 2.64248C4.66717 1.82358 5.59736 1.35167 6.25781 1.83584L13.5674 7.19619C14.1117 7.59579 14.1118 8.40897 13.5674 8.8085L6.25781 14.1688C5.59734 14.6528 4.6671 14.1811 4.66699 13.3622V2.64248Z"/>
                   </svg>
                 </div>
-                <button class="asset-remove" @click.stop="removeAsset(asset.id)">×</button>
+                <div v-if="asset.fromNode" class="node-badge">节点</div>
+                <button v-else class="asset-remove" @click.stop="removeAsset(asset.id)">×</button>
               </div>
 
               <!-- 音频缩略图 -->
@@ -69,7 +71,8 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
                 </svg>
-                <button class="asset-remove" @click.stop="removeAsset(asset.id)">×</button>
+                <div v-if="asset.fromNode" class="node-badge">节点</div>
+                <button v-else class="asset-remove" @click.stop="removeAsset(asset.id)">×</button>
               </div>
             </div>
 
@@ -87,7 +90,7 @@
           </div>
 
           <!-- 首次上传按钮（无素材时） -->
-          <div v-if="type === 'ai-video' && uploadedAssets.length === 0 && currentTab !== 'text-to-video'" class="upload-prompt">
+          <div v-if="type === 'ai-video' && allAssets.length === 0 && currentTab !== 'text-to-video'" class="upload-prompt">
             <label class="upload-prompt-btn">
               <input
                 type="file"
@@ -573,6 +576,18 @@ const statusText = computed(() => {
 .asset-remove:hover {
   background: #ff4444;
   transform: scale(1.1);
+}
+
+.node-badge {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  padding: 2px 6px;
+  background: rgba(0, 217, 255, 0.8);
+  border-radius: 4px;
+  font-size: 10px;
+  color: white;
+  font-weight: 500;
 }
 
 .asset-upload {
