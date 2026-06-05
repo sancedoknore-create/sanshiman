@@ -933,17 +933,26 @@ const statusText = computed(() => {
 
 .upload-prompt {
   margin-bottom: 12px;
-  padding: 20px;
+  width: 80px;
+  height: 80px;
   border: 2px dashed rgba(0, 217, 255, 0.3);
   border-radius: 8px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.upload-prompt:hover {
+  border-color: #00D9FF;
+  background: rgba(0, 217, 255, 0.05);
 }
 
 .upload-prompt-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   cursor: pointer;
   color: #888;
   transition: color 0.2s;
@@ -958,7 +967,7 @@ const statusText = computed(() => {
 }
 
 .upload-prompt-btn span:last-child {
-  font-size: 14px;
+  font-size: 11px;
 }
 
 /* @ 提及列表 */
