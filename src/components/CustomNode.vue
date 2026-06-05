@@ -29,7 +29,7 @@
 
     <!-- 生成卡片 - 选中时在底部展开 -->
     <transition name="expand">
-      <div v-if="isSelected" class="generator-card" :style="{ width: nodeSize.width + 'px' }">
+      <div v-if="isSelected" class="generator-card">
         <div class="generator-content">
           <!-- 视频节点选项卡 -->
           <div v-if="type === 'ai-video'" class="generator-tabs">
@@ -801,6 +801,7 @@ const statusText = computed(() => {
   top: calc(100% + 16px);
   left: 50%;
   transform: translateX(-50%);
+  width: 622px;
   background: #262626;
   border: 1px solid rgba(0, 217, 255, 0.3);
   border-radius: 12px;
