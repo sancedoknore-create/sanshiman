@@ -11,7 +11,7 @@
       :d="path"
       :style="edgeStyle"
       class="vue-flow__edge-path animated-edge"
-      :marker-end="`url(#${markerEnd})`"
+      :marker-end="markerEnd"
     />
 
     <!-- 流动粒子 -->
@@ -49,13 +49,16 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const [path] = getBezierPath({
-  sourceX: props.sourceX,
-  sourceY: props.sourceY,
-  sourcePosition: props.sourcePosition,
-  targetX: props.targetX,
-  targetY: props.targetY,
-  targetPosition: props.targetPosition,
+const path = computed(() => {
+  const [pathString] = getBezierPath({
+    sourceX: props.sourceX,
+    sourceY: props.sourceY,
+    sourcePosition: props.sourcePosition,
+    targetX: props.targetX,
+    targetY: props.targetY,
+    targetPosition: props.targetPosition,
+  })
+  return pathString
 })
 
 const edgeStyle = computed(() => ({
