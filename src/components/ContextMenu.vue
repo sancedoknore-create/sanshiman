@@ -55,6 +55,7 @@ const menuRef = ref<HTMLElement>()
 
 // 计算菜单位置，防止超出视口
 const menuStyle = computed(() => {
+  console.log('menuStyle computed, x:', props.x, 'y:', props.y)
   let left = props.x
   let top = props.y
 
@@ -64,6 +65,9 @@ const menuStyle = computed(() => {
     const menuHeight = menuRef.value.offsetHeight
     const viewportWidth = window.innerWidth
     const viewportHeight = window.innerHeight
+
+    console.log('Menu dimensions:', menuWidth, menuHeight)
+    console.log('Viewport dimensions:', viewportWidth, viewportHeight)
 
     // 右侧超出，向左调整
     if (left + menuWidth > viewportWidth) {
@@ -80,6 +84,7 @@ const menuStyle = computed(() => {
     top = Math.max(10, top)
   }
 
+  console.log('Final position:', left, top)
   return {
     left: left + 'px',
     top: top + 'px',
