@@ -14,7 +14,7 @@
           <div class="section-title">视频模型</div>
           <div class="model-list">
             <button
-              v-for="model in models"
+              v-for="model in modelList"
               :key="model.id"
               class="model-option"
               :class="{ active: modelValue === model.id }"
@@ -103,7 +103,7 @@ const defaultModels: VideoModel[] = [
 const modelList = computed(() => props.models || defaultModels)
 
 const selectedModel = computed(() => {
-  return models.find(m => m.id === props.modelValue)
+  return modelList.value.find(m => m.id === props.modelValue)
 })
 
 function toggle() {
