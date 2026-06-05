@@ -406,14 +406,6 @@ const insertAssetMention = (asset: any) => {
   updatePrompt()
 }
 
-// 过滤素材列表
-const filteredAssets = computed(() => {
-  if (!mentionFilter.value) return allAssets.value
-  return allAssets.value.filter(asset =>
-    asset.name.toLowerCase().includes(mentionFilter.value.toLowerCase())
-  )
-})
-
 // 获取提示词中已引用的素材
 const referencedAssets = computed(() => {
   if (!localPrompt.value) return []
