@@ -1,20 +1,289 @@
 <template>
   <div class="home-page">
-    <div class="background-layer">
-      <!-- 背景视频/图片会放在这里 -->
+    <!-- 自定义背景层 -->
+    <div class="background-layer" :style="backgroundStyle">
+      <video
+        v-if="customBackground && customBackgroundType === 'video'"
+        :src="customBackground"
+        class="background-video"
+        autoplay
+        loop
+        muted
+        playsinline
+      />
+      <div class="background-overlay"></div>
     </div>
-    <div class="dashboard-container">
-      <h1 class="welcome-title">欢迎使用 AI Video Canvas</h1>
-      <div class="quick-actions">
-        <button class="action-btn primary">新建项目</button>
-        <button class="action-btn">打开项目</button>
-      </div>
+
+    <!-- 内容容器 -->
+    <div class="content-container">
+      <!-- Hero区 -->
+      <section class="hero-section">
+        <div class="hero-content">
+          <h1 class="hero-title">
+            <span class="title-gradient">AI Video Canvas</span>
+          </h1>
+          <p class="hero-subtitle">用节点构建你的创意视频，AI驱动的可视化创作平台</p>
+          <div class="hero-actions">
+            <button class="hero-btn primary" @click="navigateTo('/nodes')">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 0a1 1 0 011 1v6h6a1 1 0 110 2H9v6a1 1 0 11-2 0V9H1a1 1 0 010-2h6V1a1 1 0 011-1z"/>
+              </svg>
+              新建项目
+            </button>
+            <button class="hero-btn" @click="triggerBackgroundUpload">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+              </svg>
+              更换背景
+            </button>
+            <input
+              ref="bgInputRef"
+              type="file"
+              accept="image/*,video/*"
+              @change="handleBackgroundUpload"
+              style="display: none"
+            />
+            <button v-if="customBackground" class="hero-btn ghost" @click="resetBackground">
+              重置
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 快速创建卡片 -->
+      <section class="quick-create-section">
+        <h2 class="section-title">快速创建</h2>
+        <div class="quick-cards">
+          <div
+            v-for="card in quickCards"
+            :key="card.type"
+            class="quick-card"
+            @click="createNode(card.type)"
+          >
+            <div class="card-icon" :style="{ background: card.color }">
+              <span>{{ card.icon }}</span>
+            </div>
+            <div class="card-content">
+              <div class="card-title">{{ card.title }}</div>
+              <div class="card-desc">{{ card.description }}</div>
+            </div>
+            <svg class="card-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </div>
+        </div>
+      </section>
+
+      <!-- 最近项目 -->
+      <section class="recent-section">
+        <div class="section-header">
+          <h2 class="section-title">最近项目</h2>
+          <button class="section-link" @click="navigateTo('/nodes')">
+            查看全部
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </button>
+        </div>
+
+        <div v-if="recentProjects.length === 0" class="empty-state">
+          <div class="empty-icon">📂</div>
+          <p class="empty-text">还没有项目</p>
+          <button class="empty-action" @click="navigateTo('/nodes')">创建第一个项目</button>
+        </div>
+
+        <div v-else class="projects-grid">
+          <div
+            v-for="project in recentProjects"
+            :key="project.id"
+            class="project-card"
+            @click="openProject(project)"
+          >
+            <div class="project-thumbnail">
+              <img v-if="project.thumbnail" :src="project.thumbnail" :alt="project.name" />
+              <div v-else class="project-placeholder">
+                <span>{{ project.name.charAt(0).toUpperCase() }}</span>
+              </div>
+              <div class="project-overlay">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 16 16" fill="white">
+                  <path d="M4.66699 2.64248C4.66717 1.82358 5.59736 1.35167 6.25781 1.83584L13.5674 7.19619C14.1117 7.59579 14.1118 8.40897 13.5674 8.8085L6.25781 14.1688C5.59734 14.6528 4.6671 14.1811 4.66699 13.3622V2.64248Z"/>
+                </svg>
+              </div>
+            </div>
+            <div class="project-info">
+              <div class="project-name">{{ project.name }}</div>
+              <div class="project-meta">
+                <span class="project-date">{{ formatDate(project.updatedAt) }}</span>
+                <span class="project-nodes">{{ project.nodeCount }} 个节点</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-// 主页逻辑将在后续实现
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+const bgInputRef = ref<HTMLInputElement>()
+const customBackground = ref<string>('')
+const customBackgroundType = ref<'image' | 'video'>('image')
+
+// 从localStorage恢复背景设置
+onMounted(() => {
+  const savedBg = localStorage.getItem('homepage_background')
+  const savedType = localStorage.getItem('homepage_background_type') as 'image' | 'video'
+  if (savedBg) {
+    customBackground.value = savedBg
+    customBackgroundType.value = savedType || 'image'
+  }
+})
+
+// 背景样式
+const backgroundStyle = computed(() => {
+  if (!customBackground.value) {
+    return {}
+  }
+  if (customBackgroundType.value === 'image') {
+    return {
+      backgroundImage: `url(${customBackground.value})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+    }
+  }
+  return {}
+})
+
+// 触发背景上传
+const triggerBackgroundUpload = () => {
+  bgInputRef.value?.click()
+}
+
+// 处理背景上传
+const handleBackgroundUpload = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    const dataUrl = e.target?.result as string
+    customBackground.value = dataUrl
+    customBackgroundType.value = file.type.startsWith('video/') ? 'video' : 'image'
+
+    // 保存到localStorage
+    try {
+      localStorage.setItem('homepage_background', dataUrl)
+      localStorage.setItem('homepage_background_type', customBackgroundType.value)
+    } catch (err) {
+      console.warn('图片过大，无法保存到localStorage:', err)
+    }
+  }
+  reader.readAsDataURL(file)
+}
+
+// 重置背景
+const resetBackground = () => {
+  customBackground.value = ''
+  localStorage.removeItem('homepage_background')
+  localStorage.removeItem('homepage_background_type')
+}
+
+// 快速创建卡片
+const quickCards = [
+  {
+    type: 'ai-video',
+    title: 'AI视频生成',
+    description: '文本/图片转视频',
+    icon: '🎬',
+    color: 'linear-gradient(135deg, #00D9FF 0%, #B432FF 100%)',
+  },
+  {
+    type: 'ai-image',
+    title: 'AI图片生成',
+    description: 'AI绘图创作',
+    icon: '🎨',
+    color: 'linear-gradient(135deg, #FF6B9D 0%, #FFC371 100%)',
+  },
+  {
+    type: '3d-scene',
+    title: '3D场景',
+    description: '3D导演台',
+    icon: '🎭',
+    color: 'linear-gradient(135deg, #B432FF 0%, #FF6B9D 100%)',
+  },
+  {
+    type: 'asset-ref',
+    title: '素材引用',
+    description: '管理项目素材',
+    icon: '📦',
+    color: 'linear-gradient(135deg, #FFC371 0%, #00D9FF 100%)',
+  },
+]
+
+// 最近项目（模拟数据）
+interface Project {
+  id: string
+  name: string
+  thumbnail?: string
+  updatedAt: number
+  nodeCount: number
+}
+
+const recentProjects = ref<Project[]>([
+  {
+    id: '1',
+    name: '科幻短片预告',
+    updatedAt: Date.now() - 1000 * 60 * 30,
+    nodeCount: 8,
+  },
+  {
+    id: '2',
+    name: '产品展示动画',
+    updatedAt: Date.now() - 1000 * 60 * 60 * 3,
+    nodeCount: 5,
+  },
+  {
+    id: '3',
+    name: '风景延时摄影',
+    updatedAt: Date.now() - 1000 * 60 * 60 * 24,
+    nodeCount: 12,
+  },
+])
+
+// 创建节点
+const createNode = (type: string) => {
+  router.push({ path: '/nodes', query: { create: type } })
+}
+
+// 打开项目
+const openProject = (project: Project) => {
+  router.push({ path: '/nodes', query: { project: project.id } })
+}
+
+// 导航
+const navigateTo = (path: string) => {
+  router.push(path)
+}
+
+// 格式化日期
+const formatDate = (timestamp: number) => {
+  const diff = Date.now() - timestamp
+  const minutes = Math.floor(diff / (1000 * 60))
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+
+  if (minutes < 60) return `${minutes} 分钟前`
+  if (hours < 24) return `${hours} 小时前`
+  if (days < 7) return `${days} 天前`
+  return new Date(timestamp).toLocaleDateString('zh-CN')
+}
 </script>
 
 <style scoped>
@@ -22,58 +291,373 @@
   width: 100%;
   height: 100%;
   position: relative;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
+/* 背景层 */
 .background-layer {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
   background: radial-gradient(ellipse at center, #0a1628 0%, #020308 100%);
+  z-index: 0;
+  transition: background 0.5s;
+  overflow: hidden;
 }
 
-.dashboard-container {
+.background-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.background-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(2, 3, 8, 0.4) 0%, rgba(2, 3, 8, 0.85) 100%);
+  backdrop-filter: blur(2px);
+}
+
+.content-container {
   position: relative;
   z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 60px 40px;
   display: flex;
   flex-direction: column;
+  gap: 60px;
+}
+
+/* Hero区 */
+.hero-section {
+  text-align: center;
+  padding: 60px 0 40px;
+}
+
+.hero-title {
+  font-size: 72px;
+  font-weight: 700;
+  margin: 0 0 20px;
+  letter-spacing: -2px;
+  line-height: 1.1;
+}
+
+.title-gradient {
+  background: linear-gradient(135deg, #00D9FF 0%, #B432FF 50%, #FF6B9D 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 30px rgba(0, 217, 255, 0.5));
+}
+
+.hero-subtitle {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0 0 40px;
+  font-weight: 300;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.hero-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  font-size: 15px;
+  font-weight: 500;
+  border: 1px solid rgba(0, 217, 255, 0.3);
+  background: rgba(0, 217, 255, 0.05);
+  color: #ffffff;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s;
+  backdrop-filter: blur(10px);
+}
+
+.hero-btn:hover {
+  background: rgba(0, 217, 255, 0.15);
+  border-color: #00D9FF;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 217, 255, 0.2);
+}
+
+.hero-btn.primary {
+  background: linear-gradient(135deg, rgba(0, 217, 255, 0.3) 0%, rgba(180, 50, 255, 0.3) 100%);
+  border-color: #00D9FF;
+}
+
+.hero-btn.primary:hover {
+  background: linear-gradient(135deg, rgba(0, 217, 255, 0.5) 0%, rgba(180, 50, 255, 0.5) 100%);
+  box-shadow: 0 8px 32px rgba(0, 217, 255, 0.4);
+}
+
+.hero-btn.ghost {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.hero-btn.ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+}
+
+/* 区块通用 */
+.section-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 24px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.section-header .section-title {
+  margin: 0;
+}
+
+.section-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: #00D9FF;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+
+.section-link:hover {
+  background: rgba(0, 217, 255, 0.1);
+  gap: 8px;
+}
+
+/* 快速创建卡片 */
+.quick-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.quick-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  backdrop-filter: blur(10px);
+}
+
+.quick-card:hover {
+  background: rgba(0, 217, 255, 0.08);
+  border-color: rgba(0, 217, 255, 0.4);
+  transform: translateY(-3px);
+}
+
+.quick-card:hover .card-arrow {
+  transform: translateX(4px);
+  color: #00D9FF;
+}
+
+.card-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  gap: 30px;
+  font-size: 28px;
+  flex-shrink: 0;
 }
 
-.welcome-title {
-  font-size: 48px;
-  font-weight: 300;
-  color: #00D9FF;
-  text-shadow: 0 0 20px rgba(0, 217, 255, 0.5);
+.card-content {
+  flex: 1;
+  min-width: 0;
 }
 
-.quick-actions {
-  display: flex;
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.card-desc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.card-arrow {
+  color: rgba(255, 255, 255, 0.3);
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+/* 最近项目 */
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 20px;
 }
 
-.action-btn {
-  padding: 15px 40px;
-  font-size: 16px;
+.project-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s;
+  backdrop-filter: blur(10px);
+}
+
+.project-card:hover {
+  border-color: rgba(0, 217, 255, 0.4);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(0, 217, 255, 0.15);
+}
+
+.project-card:hover .project-overlay {
+  opacity: 1;
+}
+
+.project-thumbnail {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: linear-gradient(135deg, rgba(0, 217, 255, 0.1) 0%, rgba(180, 50, 255, 0.1) 100%);
+  overflow: hidden;
+}
+
+.project-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.project-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 60px;
+  font-weight: 700;
+  color: rgba(0, 217, 255, 0.3);
+}
+
+.project-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.project-info {
+  padding: 14px 16px;
+}
+
+.project-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.empty-text {
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0 0 20px;
+}
+
+.empty-action {
+  padding: 10px 24px;
+  background: rgba(0, 217, 255, 0.15);
   border: 1px solid #00D9FF;
-  background: transparent;
   color: #00D9FF;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s;
+  font-size: 14px;
+  transition: all 0.2s;
 }
 
-.action-btn:hover {
-  background: rgba(0, 217, 255, 0.1);
-  box-shadow: 0 0 20px rgba(0, 217, 255, 0.4);
+.empty-action:hover {
+  background: rgba(0, 217, 255, 0.25);
+  box-shadow: 0 0 16px rgba(0, 217, 255, 0.3);
 }
 
-.action-btn.primary {
-  background: rgba(0, 217, 255, 0.2);
+/* 响应式 */
+@media (max-width: 768px) {
+  .content-container {
+    padding: 40px 20px;
+    gap: 40px;
+  }
+
+  .hero-title {
+    font-size: 48px;
+  }
+
+  .hero-subtitle {
+    font-size: 16px;
+  }
+
+  .quick-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .projects-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
 }
 </style>
