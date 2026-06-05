@@ -425,6 +425,16 @@ onMounted(() => {
   availableModels.value = getVideoModels()
 })
 
+// 监听选中状态，选中时聚焦输入框
+watch(() => isSelected.value, (selected) => {
+  if (selected && editableRef.value) {
+    // 延迟聚焦，等待动画完成
+    setTimeout(() => {
+      editableRef.value?.focus()
+    }, 300)
+  }
+})
+
 // 插入素材引用
 const insertAssetMention = (asset: any) => {
   if (!textareaRef.value) return
