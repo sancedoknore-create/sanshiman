@@ -5,31 +5,72 @@
       <span class="node-title">{{ data.label }}</span>
     </div>
     <div class="node-body">
-      <div class="node-status" :class="'status-' + data.status">{{ status }}</div>
+      <!-- AI绘图和AI视频节点显示提示词输入框 -->
+      <template v-if="type === 'ai-image' || type === 'ai-video'">
+        <textarea
+          v-model="localPrompt"
+          @change="updatePrompt"
+          @click.stop
+          placeholder="输入提示词..."
+          class="node-prompt-input"
+          rows="3"
+        ></textarea>
+        <button class="node-execute-btn" @click.stop="executeNode">
+          {{ data.status === 'running' ? '执行中...' : '▶️ 执行' }}
+        </button>
+      </template>
+
+      <!-- 其他节点显示状态 -->
+      <template v-else>
+        <div class="node-status" :class="'status-' + data.status">{{ status }}</div>
+      </template>
+
       <div v-if="data.progress !== undefined && data.status === 'running'" class="node-progress">
         <div class="progress-bar">
           <div class="progress-fill" :style="{ width: data.progress + '%' }"></div>
         </div>
       </div>
     </div>
-    <Handle type="target" position="left" class="custom-handle" />
-    <Handle type="source" position="right" class="custom-handle" />
+    <Handle type="target" :position="Position.Left" class="custom-handle" />
+    <Handle type="source" :position="Position.Right" class="custom-handle" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
+import { useNodeStore } from '@/stores/node'
 
 interface Props {
   id: string
   type: string
   data: {
     label: string
+    status?: string
+    prompt?: string
+    progress?: number
   }
 }
 
 const props = defineProps<Props>()
+const nodeStore = useNodeStore()
+
+const localPrompt = ref(props.data.prompt || '')
+
+// 监听data.prompt变化
+watch(() => props.data.prompt, (newPrompt) => {
+  localPrompt.value = newPrompt || ''
+})
+
+const updatePrompt = () => {
+  nodeStore.updateNodeData(props.id, { prompt: localPrompt.value })
+}
+
+const executeNode = () => {
+  if (props.data.status !== 'running') {
+    nodeStore.executeNode(props.id)
+  }
+}
 
 const icon = computed(() => {
   const icons: Record<string, string> = {
@@ -49,7 +90,7 @@ const status = computed(() => {
     completed: '已完成',
     error: '失败',
   }
-  return statuses[props.data.status] || '待执行'
+  return statuses[props.data.status || 'idle'] || '待执行'
 })
 
 const nodeClass = computed(() => `node-type-${props.type}`)
@@ -57,7 +98,8 @@ const nodeClass = computed(() => `node-type-${props.type}`)
 
 <style scoped>
 .custom-node {
-  min-width: 180px;
+  min-width: 240px;
+  max-width: 320px;
   background: rgba(2, 3, 8, 0.9);
   border: 1px solid #00D9FF;
   border-radius: 8px;
@@ -93,6 +135,51 @@ const nodeClass = computed(() => `node-type-${props.type}`)
 
 .node-body {
   padding: 12px;
+}
+
+.node-prompt-input {
+  width: 100%;
+  padding: 8px;
+  background: rgba(0, 217, 255, 0.05);
+  border: 1px solid #00D9FF;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 12px;
+  font-family: inherit;
+  resize: none;
+  margin-bottom: 8px;
+}
+
+.node-prompt-input:focus {
+  outline: none;
+  border-color: #B432FF;
+  box-shadow: 0 0 8px rgba(180, 50, 255, 0.3);
+}
+
+.node-prompt-input::placeholder {
+  color: #666;
+}
+
+.node-execute-btn {
+  width: 100%;
+  padding: 8px;
+  background: rgba(0, 217, 255, 0.2);
+  border: 1px solid #00D9FF;
+  border-radius: 4px;
+  color: #00D9FF;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.node-execute-btn:hover {
+  background: rgba(0, 217, 255, 0.3);
+  box-shadow: 0 0 10px rgba(0, 217, 255, 0.4);
+}
+
+.node-execute-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .node-status {
