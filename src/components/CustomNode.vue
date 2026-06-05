@@ -119,7 +119,7 @@
           <!-- @ 提及素材列表 -->
           <transition name="mention">
             <div
-              v-if="showAssetMention && filteredAssets.length > 0"
+              v-if="showAssetMention && allAssets.length > 0"
               class="asset-mention-list"
               :style="{ top: mentionPosition.top + 'px', left: mentionPosition.left + 'px' }"
               @click.stop
