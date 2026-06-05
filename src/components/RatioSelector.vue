@@ -62,6 +62,21 @@
             </div>
           </div>
         </div>
+
+        <div class="dropdown-section">
+          <div class="audio-toggle">
+            <span class="section-title">生成音频</span>
+            <button
+              class="toggle-btn"
+              :class="{ active: enableAudio }"
+              @click.stop="enableAudio = !enableAudio"
+            >
+              <span class="toggle-option" :class="{ active: !enableAudio }">关闭</span>
+              <span class="toggle-option" :class="{ active: enableAudio }">开启</span>
+              <span class="toggle-indicator" :class="{ active: enableAudio }"></span>
+            </button>
+          </div>
+        </div>
       </div>
     </transition>
   </div>
@@ -93,6 +108,7 @@ const isOpen = ref(false)
 const selectorRef = ref<HTMLElement>()
 const selectedResolution = ref('1080P')
 const selectedDuration = ref(15) // 改为数字
+const enableAudio = ref(false) // 音频开关
 
 const ratioOptions: RatioOption[] = [
   { label: 'Auto', value: 'auto', aspect: '1/1', icon: '⚡' },
