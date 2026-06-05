@@ -147,7 +147,7 @@
           </div>
 
           <!-- 首次上传按钮（无素材时） -->
-          <div v-if="(type === 'ai-video' || type === 'ai-image') && filteredAssetsForNode.length === 0 && currentTab !== 'text-to-video'" class="upload-prompt">
+          <div v-if="shouldShowUploadPrompt" class="upload-prompt">
             <label class="upload-prompt-btn">
               <input
                 type="file"
@@ -794,6 +794,20 @@ const filteredAssetsForNode = computed(() => {
     return allAssets.value.filter(asset => asset.type === 'image')
   }
   return allAssets.value
+})
+
+// 是否显示首次上传按钮
+const shouldShowUploadPrompt = computed(() => {
+  // 没有素材时显示上传按钮
+  if (filteredAssetsForNode.value.length > 0) return false
+
+  // 绘图节点：始终显示
+  if (props.type === 'ai-image') return true
+
+  // 视频节点：非文生视频时显示
+  if (props.type === 'ai-video' && currentTab.value !== 'text-to-video') return true
+
+  return false
 })
 
 // 视频节点选项卡 - 根据输入动态启用
