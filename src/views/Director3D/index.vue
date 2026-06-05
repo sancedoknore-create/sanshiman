@@ -340,8 +340,8 @@ const selectedObjectId = ref<string | null>(null)
 
 // 镜头配置
 const camera = reactive({
-  position: { x: 5, y: 5, z: 5 },
-  target: { x: 0, y: 0, z: 0 },
+  position: { x: 0, y: 3, z: 8 },
+  target: { x: 0, y: 1, z: 0 },
   fov: 50,
   near: 0.1,
   far: 1000,
@@ -349,10 +349,10 @@ const camera = reactive({
 
 // 镜头预设
 const cameraPresets = [
-  { name: '正面', position: { x: 0, y: 0, z: 8 }, target: { x: 0, y: 0, z: 0 } },
-  { name: '俯视', position: { x: 0, y: 8, z: 0 }, target: { x: 0, y: 0, z: 0 } },
-  { name: '侧面', position: { x: 8, y: 0, z: 0 }, target: { x: 0, y: 0, z: 0 } },
-  { name: '透视', position: { x: 5, y: 5, z: 5 }, target: { x: 0, y: 0, z: 0 } },
+  { name: '正面', position: { x: 0, y: 1.5, z: 7 }, target: { x: 0, y: 1, z: 0 } },
+  { name: '俯视', position: { x: 0, y: 8, z: 0.1 }, target: { x: 0, y: 0, z: 0 } },
+  { name: '侧面', position: { x: 7, y: 1.5, z: 0 }, target: { x: 0, y: 1, z: 0 } },
+  { name: '透视', position: { x: 5, y: 4, z: 6 }, target: { x: 0, y: 1, z: 0 } },
 ]
 
 // 光照配置
