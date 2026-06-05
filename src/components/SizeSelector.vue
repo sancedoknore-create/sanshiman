@@ -1,5 +1,5 @@
 <template>
-  <div class="size-selector" @click="toggleDropdown">
+  <div class="size-selector" ref="selectorRef" @click.stop="toggleDropdown">
     <div class="size-display">
       <span class="size-icon">📐</span>
       <span class="size-text">{{ selectedSizeLabel }}</span>
@@ -13,7 +13,7 @@
           :key="size.value"
           class="size-option"
           :class="{ selected: modelValue === size.value }"
-          @click="selectSize(size.value)"
+          @click.stop="selectSize(size.value)"
         >
           <div class="size-label">{{ size.label }}</div>
           <div class="size-resolution">{{ size.resolution }}</div>
@@ -24,7 +24,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 
 interface Size {
   label: string
@@ -45,6 +45,7 @@ const emit = defineEmits<{
 }>()
 
 const showDropdown = ref(false)
+const selectorRef = ref<HTMLElement>()
 
 const sizes: Size[] = [
   { label: '正方形', value: '1024x1024', resolution: '1024×1024' },
@@ -70,14 +71,18 @@ const selectSize = (value: string) => {
 
 // 点击外部关闭
 const handleClickOutside = (event: MouseEvent) => {
-  if (showDropdown.value) {
+  if (selectorRef.value && !selectorRef.value.contains(event.target as Node)) {
     showDropdown.value = false
   }
 }
 
-if (typeof window !== 'undefined') {
-  window.addEventListener('click', handleClickOutside)
-}
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <style scoped>

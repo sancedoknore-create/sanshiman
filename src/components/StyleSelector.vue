@@ -1,5 +1,5 @@
 <template>
-  <div class="style-selector" @click="toggleDropdown">
+  <div class="style-selector" ref="selectorRef" @click.stop="toggleDropdown">
     <div class="style-display">
       <span class="style-icon">🎨</span>
       <span class="style-text">{{ selectedStyleLabel }}</span>
@@ -13,7 +13,7 @@
           :key="style.value"
           class="style-option"
           :class="{ selected: modelValue === style.value }"
-          @click="selectStyle(style.value)"
+          @click.stop="selectStyle(style.value)"
         >
           <div class="style-label">{{ style.label }}</div>
           <div class="style-desc">{{ style.description }}</div>
@@ -24,7 +24,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 
 interface Style {
   label: string
@@ -45,6 +45,7 @@ const emit = defineEmits<{
 }>()
 
 const showDropdown = ref(false)
+const selectorRef = ref<HTMLElement>()
 
 const styles: Style[] = [
   { label: '写实', value: 'realistic', description: '照片级真实感' },
@@ -73,14 +74,18 @@ const selectStyle = (value: string) => {
 
 // 点击外部关闭
 const handleClickOutside = (event: MouseEvent) => {
-  if (showDropdown.value) {
+  if (selectorRef.value && !selectorRef.value.contains(event.target as Node)) {
     showDropdown.value = false
   }
 }
 
-if (typeof window !== 'undefined') {
-  window.addEventListener('click', handleClickOutside)
-}
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <style scoped>
