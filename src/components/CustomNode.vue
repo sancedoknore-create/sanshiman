@@ -456,8 +456,10 @@ const statusText = computed(() => {
   border: none;
   border-radius: 0;
   overflow: visible;
+  pointer-events: auto;
 }
 
+/* 连接点的交互区域 */
 :deep(.custom-handle::before) {
   content: '';
   position: absolute;
@@ -465,20 +467,20 @@ const statusText = computed(() => {
   height: 80px;
   border-radius: 50%;
   top: 50%;
-  transform: translateY(-50%);
   pointer-events: auto;
 }
 
-:deep(.custom-handle.target::before) {
-  right: 0;
-  transform: translate(25px, -50%);
+:deep(.custom-handle.react-flow__handle-left::before) {
+  right: 40px;
+  transform: translateY(-50%);
 }
 
-:deep(.custom-handle.source::before) {
-  left: 0;
-  transform: translate(-25px, -50%);
+:deep(.custom-handle.react-flow__handle-right::before) {
+  left: 40px;
+  transform: translateY(-50%);
 }
 
+/* 连接点的可见圆点 */
 :deep(.custom-handle::after) {
   content: '';
   position: absolute;
@@ -486,24 +488,27 @@ const statusText = computed(() => {
   height: 20px;
   border-radius: 50%;
   background: #00D9FF;
-  border: 2px solid #020308;
+  border: 3px solid #262626;
   top: 50%;
   opacity: 0;
   transition: all 0.2s;
   pointer-events: none;
+  z-index: 10;
 }
 
-:deep(.custom-handle.target::after) {
-  right: 0;
-  transform: translate(25px, -50%);
+:deep(.custom-handle.react-flow__handle-left::after) {
+  right: -10px;
+  transform: translateY(-50%);
 }
 
-:deep(.custom-handle.source::after) {
-  left: 0;
-  transform: translate(-25px, -50%);
+:deep(.custom-handle.react-flow__handle-right::after) {
+  left: -10px;
+  transform: translateY(-50%);
 }
 
-:deep(.custom-handle:hover::after) {
+:deep(.custom-handle:hover::after),
+:deep(.custom-handle.connecting::after),
+:deep(.custom-handle.connectionindicator::after) {
   opacity: 1;
   box-shadow: 0 0 12px #00D9FF;
 }
