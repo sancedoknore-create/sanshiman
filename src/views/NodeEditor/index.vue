@@ -484,7 +484,6 @@ const getNodeLabel = (type: string): string => {
   top: 0;
   border-left: 1px dashed rgba(0, 217, 255, 0.8);
 }
-}
 
 :deep(.vue-flow__background) {
   background-color: #020308;
