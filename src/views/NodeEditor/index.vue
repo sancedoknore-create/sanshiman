@@ -367,12 +367,62 @@ const onNodeContextMenu = (event: { event: MouseEvent; node: Node }) => {
 
 // 菜单选择处理
 const onContextMenuSelect = (action: string) => {
-  if (action.startsWith('add-')) {
+  if (action === 'upload-asset') {
+    handleUploadAsset()
+  } else if (action.startsWith('add-')) {
     addNodeByType(action.replace('add-', ''))
   } else {
     handleNodeAction(action)
   }
   contextMenu.visible = false
+}
+
+// 处理上传素材
+const handleUploadAsset = () => {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'image/*,video/*,audio/*'
+  input.multiple = true
+
+  input.onchange = async (e: Event) => {
+    const files = (e.target as HTMLInputElement).files
+    if (!files || files.length === 0) return
+
+    for (const file of Array.from(files)) {
+      // 创建预览URL
+      const url = URL.createObjectURL(file)
+
+      // 判断文件类型
+      let type: 'image' | 'video' | 'audio' = 'image'
+      if (file.type.startsWith('video/')) {
+        type = 'video'
+      } else if (file.type.startsWith('audio/')) {
+        type = 'audio'
+      }
+
+      // 创建素材节点
+      const position = project({
+        x: contextMenu.data?.clientX || window.innerWidth / 2,
+        y: contextMenu.data?.clientY || window.innerHeight / 2,
+      })
+
+      const node: Node = {
+        id: `asset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        type: 'asset-ref',
+        position,
+        data: {
+          label: file.name,
+          assetType: type,
+          assetUrl: url,
+          assetName: file.name,
+        },
+      }
+
+      nodeStore.addNode(node)
+    }
+  }
+
+  input.click()
 }
 
 // 添加节点
