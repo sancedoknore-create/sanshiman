@@ -100,7 +100,7 @@ const ratioOptions: RatioOption[] = [
   { label: '3:4', value: '3:4', aspect: '3/4', icon: '▯' },
 ]
 
-const resolutions = ['720P', '1080P', '2K', '4K']
+const resolutions = ['720P', '1080P', '4080P']
 const minDuration = 4
 const maxDuration = 15
 
