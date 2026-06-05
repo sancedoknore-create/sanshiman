@@ -125,6 +125,33 @@ const currentTab = ref('text-to-video')
 const selectedRatio = ref('16:9')
 const selectedModel = ref('seedance-2.0')
 const availableModels = ref<VideoModel[]>([])
+const uploadedAssets = ref<Array<{ id: string; type: 'image' | 'video' | 'audio'; url: string; name: string }>>([])
+
+// 处理文件上传
+const handleFileUpload = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const files = input.files
+  if (!files) return
+
+  Array.from(files).forEach(file => {
+    const url = URL.createObjectURL(file)
+    const type = file.type.startsWith('image/') ? 'image'
+                : file.type.startsWith('video/') ? 'video'
+                : 'audio'
+
+    uploadedAssets.value.push({
+      id: `asset_${Date.now()}_${Math.random()}`,
+      type,
+      url,
+      name: file.name
+    })
+  })
+}
+
+// 移除素材
+const removeAsset = (assetId: string) => {
+  uploadedAssets.value = uploadedAssets.value.filter(a => a.id !== assetId)
+}
 
 // 加载模型列表
 onMounted(() => {
