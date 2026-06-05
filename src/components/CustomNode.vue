@@ -449,40 +449,41 @@ const statusText = computed(() => {
 :deep(.custom-handle) {
   width: 20px;
   height: 20px;
-  background: transparent;
-  border: none;
+  background: #00D9FF !important;
+  border: 3px solid #262626 !important;
   border-radius: 50%;
   pointer-events: auto;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-:deep(.custom-handle:hover),
-:deep(.custom-handle.connecting),
-:deep(.custom-handle.connectionindicator) {
-  opacity: 1;
-}
-
-/* 连接点的可见圆点 */
-:deep(.custom-handle::after) {
-  content: '';
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #00D9FF;
-  border: 3px solid #262626;
-  top: 0;
-  left: 0;
+  opacity: 0 !important;
+  transition: opacity 0.2s !important;
   box-shadow: 0 0 12px #00D9FF;
 }
 
-/* 扩大交互区域但保持视觉大小 */
+:deep(.custom-handle:hover) {
+  opacity: 1 !important;
+}
+
+:deep(.custom-handle.connecting) {
+  opacity: 1 !important;
+}
+
+:deep(.custom-handle.connectionindicator) {
+  opacity: 1 !important;
+}
+
+:deep(.custom-handle.connectablestart) {
+  opacity: 1 !important;
+}
+
+:deep(.custom-handle.connectableend) {
+  opacity: 1 !important;
+}
+
+/* 扩大交互区域 */
 :deep(.custom-handle::before) {
   content: '';
   position: absolute;
-  width: 60px;
-  height: 60px;
+  width: 80px;
+  height: 80px;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
