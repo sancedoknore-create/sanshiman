@@ -335,8 +335,41 @@ const isSelected = computed(() => nodeStore.selectedNodeId === props.id)
 const currentTab = ref('text-to-video')
 const selectedRatio = ref('16:9')
 const selectedModel = ref('seedance-2.0')
+const selectedSize = ref('1024x1024')
+const selectedStyle = ref('realistic')
 const availableModels = ref<VideoModel[]>([])
 const uploadedAssets = ref<Array<{ id: string; type: 'image' | 'video' | 'audio'; url: string; name: string }>>([])
+
+// 绘图模型列表
+const imageModels: VideoModel[] = [
+  {
+    id: 'dall-e-3',
+    name: 'DALL-E 3',
+    provider: 'OpenAI',
+    capabilities: {
+      ratios: ['1:1', '16:9', '9:16'],
+      maxDuration: 0,
+    },
+  },
+  {
+    id: 'midjourney-6',
+    name: 'Midjourney v6',
+    provider: 'Midjourney',
+    capabilities: {
+      ratios: ['1:1', '16:9', '9:16', '3:2', '2:3'],
+      maxDuration: 0,
+    },
+  },
+  {
+    id: 'stable-diffusion-xl',
+    name: 'Stable Diffusion XL',
+    provider: 'Stability AI',
+    capabilities: {
+      ratios: ['1:1', '16:9', '9:16'],
+      maxDuration: 0,
+    },
+  },
+]
 
 // @ 提及功能
 const showAssetMention = ref(false)
