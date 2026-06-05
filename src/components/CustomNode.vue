@@ -5,7 +5,12 @@
       <span class="node-title">{{ data.label }}</span>
     </div>
     <div class="node-body">
-      <div class="node-status">{{ status }}</div>
+      <div class="node-status" :class="'status-' + data.status">{{ status }}</div>
+      <div v-if="data.progress !== undefined && data.status === 'running'" class="node-progress">
+        <div class="progress-bar">
+          <div class="progress-fill" :style="{ width: data.progress + '%' }"></div>
+        </div>
+      </div>
     </div>
     <Handle type="target" position="left" class="custom-handle" />
     <Handle type="source" position="right" class="custom-handle" />
@@ -37,7 +42,15 @@ const icon = computed(() => {
   return icons[props.type] || '📄'
 })
 
-const status = computed(() => '待执行')
+const status = computed(() => {
+  const statuses: Record<string, string> = {
+    idle: '待执行',
+    running: '执行中',
+    completed: '已完成',
+    error: '失败',
+  }
+  return statuses[props.data.status] || '待执行'
+})
 
 const nodeClass = computed(() => `node-type-${props.type}`)
 </script>
@@ -85,6 +98,36 @@ const nodeClass = computed(() => `node-type-${props.type}`)
 .node-status {
   font-size: 12px;
   color: #888;
+}
+
+.node-status.status-running {
+  color: #00D9FF;
+}
+
+.node-status.status-completed {
+  color: #00ff88;
+}
+
+.node-status.status-error {
+  color: #ff4444;
+}
+
+.node-progress {
+  margin-top: 8px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 3px;
+  background: rgba(0, 217, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00D9FF, #B432FF);
+  transition: width 0.3s;
 }
 
 :deep(.custom-handle) {

@@ -1,8 +1,8 @@
 <template>
   <div class="node-editor">
     <VueFlow
-      v-model:nodes="nodes"
-      v-model:edges="edges"
+      v-model:nodes="nodeStore.nodes"
+      v-model:edges="nodeStore.edges"
       :default-viewport="{ zoom: 1, x: 0, y: 0 }"
       :min-zoom="0.1"
       :max-zoom="4"
@@ -10,6 +10,7 @@
       :snap-grid="[15, 15]"
       @pane-context-menu="onPaneContextMenu"
       @node-context-menu="onNodeContextMenu"
+      @node-click="onNodeClick"
       class="vue-flow-container"
     >
       <Background pattern-color="#00D9FF" :gap="20" :size="1" />
@@ -26,11 +27,20 @@
       @select="onContextMenuSelect"
       @close="contextMenu.visible = false"
     />
+
+    <!-- 属性面板 -->
+    <transition name="slide">
+      <NodeProperties
+        v-if="showProperties && nodeStore.selectedNode"
+        :node="nodeStore.selectedNode"
+        @close="showProperties = false"
+      />
+    </transition>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, markRaw } from 'vue'
+import { ref, reactive, markRaw, onMounted } from 'vue'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
@@ -39,8 +49,13 @@ import type { Node, Edge } from '@vue-flow/core'
 import ContextMenu from '@/components/ContextMenu.vue'
 import CustomNode from '@/components/CustomNode.vue'
 import AnimatedEdge from '@/components/AnimatedEdge.vue'
+import NodeProperties from '@/components/NodeProperties.vue'
+import { useNodeStore } from '@/stores/node'
 
-const { addNodes, addEdges, project } = useVueFlow({
+const nodeStore = useNodeStore()
+const showProperties = ref(false)
+
+const { addNodes, project } = useVueFlow({
   nodeTypes: {
     'ai-image': markRaw(CustomNode),
     'ai-video': markRaw(CustomNode),
@@ -53,29 +68,48 @@ const { addNodes, addEdges, project } = useVueFlow({
   },
 })
 
-const nodes = ref<Node[]>([
-  {
-    id: '1',
-    type: 'ai-image',
-    position: { x: 100, y: 100 },
-    data: { label: 'AI绘图示例' },
-  },
-  {
-    id: '2',
-    type: 'ai-video',
-    position: { x: 400, y: 100 },
-    data: { label: 'AI视频示例' },
-  },
-])
+// 初始化示例节点
+onMounted(() => {
+  if (nodeStore.nodes.length === 0) {
+    const node1: Node = {
+      id: '1',
+      type: 'ai-image',
+      position: { x: 100, y: 100 },
+      data: {
+        label: 'AI绘图示例',
+        status: 'idle',
+        prompt: '宇宙飞船在星空中飞行',
+        size: '1024x1024',
+        style: 'realistic',
+      },
+    }
 
-const edges = ref<Edge[]>([
-  {
-    id: 'e1-2',
-    source: '1',
-    target: '2',
-    type: 'animated',
-  },
-])
+    const node2: Node = {
+      id: '2',
+      type: 'ai-video',
+      position: { x: 400, y: 100 },
+      data: {
+        label: 'AI视频示例',
+        status: 'idle',
+        mode: 'image-to-video',
+        prompt: '飞船起飞动画',
+        duration: 5,
+        fps: 24,
+      },
+    }
+
+    nodeStore.addNode(node1)
+    nodeStore.addNode(node2)
+
+    const edge: Edge = {
+      id: 'e1-2',
+      source: '1',
+      target: '2',
+      type: 'animated',
+    }
+    nodeStore.addEdge(edge)
+  }
+})
 
 interface ContextMenuState {
   visible: boolean
@@ -148,10 +182,26 @@ const addNodeByType = (type: string) => {
     position,
     data: {
       label: getNodeLabel(type),
+      status: 'idle',
+      prompt: '',
+      size: '1024x1024',
+      style: 'realistic',
+      mode: 'text-to-video',
+      duration: 5,
+      fps: 24,
+      sceneTemplate: 'outdoor-street',
+      lighting: 'three-point',
     },
   }
 
   addNodes([newNode])
+  nodeStore.addNode(newNode)
+}
+
+// 节点点击
+const onNodeClick = (event: { event: MouseEvent; node: Node }) => {
+  nodeStore.selectNode(event.node.id)
+  showProperties.value = true
 }
 
 // 节点操作
@@ -160,17 +210,21 @@ const handleNodeAction = (action: string) => {
 
   switch (action) {
     case 'execute':
-      console.log('执行节点:', node)
+      nodeStore.executeNode(node.id)
       break
     case 'edit':
-      console.log('编辑节点:', node)
+      nodeStore.selectNode(node.id)
+      showProperties.value = true
       break
     case 'copy':
+      // TODO: 实现复制功能
       console.log('复制节点:', node)
       break
     case 'delete':
-      nodes.value = nodes.value.filter(n => n.id !== node.id)
-      edges.value = edges.value.filter(e => e.source !== node.id && e.target !== node.id)
+      nodeStore.removeNode(node.id)
+      if (nodeStore.selectedNodeId === node.id) {
+        showProperties.value = false
+      }
       break
   }
 }
@@ -193,10 +247,11 @@ const getNodeLabel = (type: string): string => {
   height: 100%;
   background: #020308;
   position: relative;
+  display: flex;
 }
 
 .vue-flow-container {
-  width: 100%;
+  flex: 1;
   height: 100%;
 }
 
@@ -222,5 +277,19 @@ const getNodeLabel = (type: string): string => {
 
 :deep(.vue-flow__controls button:hover) {
   background: rgba(0, 217, 255, 0.2);
+}
+
+/* 属性面板滑入动画 */
+.slide-enter-active,
+.slide-leave-active {
+  transition: transform 0.3s ease;
+}
+
+.slide-enter-from {
+  transform: translateX(100%);
+}
+
+.slide-leave-to {
+  transform: translateX(100%);
 }
 </style>
