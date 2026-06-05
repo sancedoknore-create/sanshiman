@@ -233,6 +233,22 @@
     <!-- 连接点 -->
     <Handle type="target" :position="Position.Left" id="target" class="custom-handle" />
     <Handle type="source" :position="Position.Right" id="source" class="custom-handle" />
+
+    <!-- 视频播放弹窗 -->
+    <Teleport to="body">
+      <div v-if="showVideoModal" class="video-modal-overlay" @click="closeVideo">
+        <div class="video-modal-content" @click.stop>
+          <button class="video-modal-close" @click="closeVideo">×</button>
+          <video
+            ref="videoPlayerRef"
+            :src="data.outputVideo"
+            class="video-modal-player"
+            controls
+            autoplay
+          />
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -724,10 +740,28 @@ const selectNode = () => {
   nodeStore.selectNode(props.id)
 }
 
+// 视频相关
+const videoThumbnailRef = ref<HTMLVideoElement>()
+const videoPlayerRef = ref<HTMLVideoElement>()
+const showVideoModal = ref(false)
+
 // 视频加载完成，定位到第一帧
 const onVideoLoaded = (event: Event) => {
   const video = event.target as HTMLVideoElement
   video.currentTime = 0.1 // 定位到0.1秒显示首帧
+}
+
+// 播放视频（弹窗）
+const playVideo = () => {
+  showVideoModal.value = true
+}
+
+// 关闭视频弹窗
+const closeVideo = () => {
+  showVideoModal.value = false
+  if (videoPlayerRef.value) {
+    videoPlayerRef.value.pause()
+  }
 }
 
 const updatePrompt = () => {
