@@ -1,49 +1,69 @@
 <template>
-  <div class="custom-node" :class="[nodeClass, { expanded: isSelected }]">
-    <div class="node-header" @click.stop="toggleExpand">
-      <span class="node-icon">{{ icon }}</span>
-      <span class="node-title">{{ data.label }}</span>
-      <span v-if="!isSelected && (type === 'ai-image' || type === 'ai-video')" class="expand-hint">▼</span>
-    </div>
-
-    <!-- 展开内容 - 仅在选中时显示 -->
-    <div v-if="isSelected" class="node-body">
-      <!-- AI绘图和AI视频节点显示提示词输入框 -->
-      <template v-if="type === 'ai-image' || type === 'ai-video'">
-        <textarea
-          v-model="localPrompt"
-          @change="updatePrompt"
-          @click.stop
-          placeholder="输入提示词..."
-          class="node-prompt-input"
-          rows="3"
-        ></textarea>
-        <button
-          class="node-execute-btn"
-          @click.stop="executeNode"
-          :disabled="data.status === 'running'"
-        >
-          {{ data.status === 'running' ? '执行中...' : '▶️ 执行' }}
-        </button>
-      </template>
-
-      <!-- 其他节点显示状态 -->
-      <template v-else>
-        <div class="node-status" :class="'status-' + data.status">{{ status }}</div>
-      </template>
-
-      <div v-if="data.progress !== undefined && data.status === 'running'" class="node-progress">
-        <div class="progress-bar">
-          <div class="progress-fill" :style="{ width: data.progress + '%' }"></div>
+  <div class="custom-node" :class="{ selected: isSelected }">
+    <!-- 节点主体 - 固定350x350 -->
+    <div class="node-main" @click.stop="selectNode">
+      <div class="node-content">
+        <div class="node-icon-large">{{ icon }}</div>
+        <div class="node-title-main">{{ data.label }}</div>
+        <div class="node-hint">尝试：</div>
+        <div class="node-actions">
+          <button class="node-action-btn" @click.stop>
+            <span class="action-icon">🎨</span>
+            <span>文生图</span>
+          </button>
+          <button class="node-action-btn" @click.stop>
+            <span class="action-icon">📤</span>
+            <span>上传图片</span>
+          </button>
         </div>
+      </div>
+
+      <!-- 状态指示 -->
+      <div v-if="data.status !== 'idle'" class="node-status-badge" :class="'status-' + data.status">
+        {{ statusText }}
       </div>
     </div>
 
-    <!-- 紧凑状态显示状态 -->
-    <div v-else class="node-compact-status">
-      <span class="status-dot" :class="'status-' + data.status"></span>
-    </div>
+    <!-- 生成卡片 - 选中时在底部展开 -->
+    <transition name="expand">
+      <div v-if="isSelected" class="generator-card">
+        <div class="generator-content">
+          <textarea
+            v-model="localPrompt"
+            @change="updatePrompt"
+            @click.stop
+            placeholder="描述你想要生成的画面内容..."
+            class="generator-input"
+            rows="3"
+          ></textarea>
 
+          <div class="generator-footer">
+            <div class="generator-options">
+              <button class="option-btn">
+                <span>{{ type === 'ai-image' ? '1024x1024' : '16:9' }}</span>
+                <span class="chevron">▼</span>
+              </button>
+            </div>
+
+            <button
+              class="generate-btn"
+              @click.stop="executeNode"
+              :disabled="data.status === 'running'"
+            >
+              <span v-if="data.status === 'running'">生成中...</span>
+              <span v-else>生成</span>
+            </button>
+          </div>
+
+          <!-- 进度条 -->
+          <div v-if="data.progress !== undefined && data.status === 'running'" class="progress-bar">
+            <div class="progress-fill" :style="{ width: data.progress + '%' }"></div>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- 连接点 -->
     <Handle type="target" :position="Position.Left" class="custom-handle" />
     <Handle type="source" :position="Position.Right" class="custom-handle" />
   </div>
@@ -69,23 +89,14 @@ const props = defineProps<Props>()
 const nodeStore = useNodeStore()
 
 const localPrompt = ref(props.data.prompt || '')
-
-// 判断是否选中
 const isSelected = computed(() => nodeStore.selectedNodeId === props.id)
 
-// 监听data.prompt变化
 watch(() => props.data.prompt, (newPrompt) => {
   localPrompt.value = newPrompt || ''
 })
 
-const toggleExpand = () => {
-  if (isSelected.value) {
-    // 已选中，点击标题关闭
-    nodeStore.selectNode(null)
-  } else {
-    // 未选中，展开
-    nodeStore.selectNode(props.id)
-  }
+const selectNode = () => {
+  nodeStore.selectNode(props.id)
 }
 
 const updatePrompt = () => {
@@ -109,184 +120,221 @@ const icon = computed(() => {
   return icons[props.type] || '📄'
 })
 
-const status = computed(() => {
+const statusText = computed(() => {
   const statuses: Record<string, string> = {
-    idle: '待执行',
-    running: '执行中',
+    running: '生成中',
     completed: '已完成',
     error: '失败',
   }
-  return statuses[props.data.status || 'idle'] || '待执行'
+  return statuses[props.data.status || ''] || ''
 })
-
-const nodeClass = computed(() => `node-type-${props.type}`)
 </script>
 
 <style scoped>
 .custom-node {
-  min-width: 180px;
-  background: rgba(2, 3, 8, 0.9);
-  border: 1px solid #00D9FF;
-  border-radius: 8px;
-  box-shadow: 0 0 20px rgba(0, 217, 255, 0.3);
-  padding: 0;
+  position: relative;
+  width: 350px;
+}
+
+/* 节点主体 */
+.node-main {
+  width: 350px;
+  height: 350px;
+  background: #262626;
+  border: 1px solid rgba(0, 217, 255, 0.3);
+  border-radius: 12px;
+  cursor: pointer;
   transition: all 0.3s;
+  overflow: hidden;
 }
 
-.custom-node.expanded {
-  min-width: 240px;
-  max-width: 320px;
+.custom-node.selected .node-main {
+  border-color: #00D9FF;
+  box-shadow: inset 0 0 0 2px #00D9FF;
 }
 
-.custom-node:hover {
-  box-shadow: 0 0 30px rgba(180, 50, 255, 0.5);
-  border-color: #B432FF;
+.node-main:hover {
+  border-color: #00D9FF;
 }
 
-.node-header {
+.node-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 24px;
+  gap: 16px;
+}
+
+.node-icon-large {
+  font-size: 64px;
+  opacity: 0.5;
+}
+
+.node-title-main {
+  font-size: 16px;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.node-hint {
+  font-size: 14px;
+  color: #888;
+  margin-top: 8px;
+}
+
+.node-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.node-action-btn {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px;
-  background: rgba(0, 217, 255, 0.1);
-  border-bottom: 1px solid #00D9FF;
-  border-radius: 8px 8px 0 0;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-
-.node-header:hover {
-  background: rgba(0, 217, 255, 0.15);
-}
-
-.node-icon {
-  font-size: 20px;
-}
-
-.node-title {
-  flex: 1;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #ffffff;
   font-size: 14px;
-  font-weight: 500;
-  color: #ffffff;
-}
-
-.expand-hint {
-  font-size: 10px;
-  color: #666;
-  transition: transform 0.3s;
-}
-
-.expanded .expand-hint {
-  transform: rotate(180deg);
-}
-
-.node-compact-status {
-  padding: 8px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #666;
-}
-
-.status-dot.status-idle {
-  background: #666;
-}
-
-.status-dot.status-running {
-  background: #00D9FF;
-  box-shadow: 0 0 8px #00D9FF;
-  animation: pulse 1.5s infinite;
-}
-
-.status-dot.status-completed {
-  background: #00ff88;
-  box-shadow: 0 0 8px #00ff88;
-}
-
-.status-dot.status-error {
-  background: #ff4444;
-  box-shadow: 0 0 8px #ff4444;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-.node-body {
-  padding: 12px;
-}
-
-.node-prompt-input {
-  width: 100%;
-  padding: 8px;
-  background: rgba(0, 217, 255, 0.05);
-  border: 1px solid #00D9FF;
-  border-radius: 4px;
-  color: #ffffff;
-  font-size: 12px;
-  font-family: inherit;
-  resize: none;
-  margin-bottom: 8px;
-}
-
-.node-prompt-input:focus {
-  outline: none;
-  border-color: #B432FF;
-  box-shadow: 0 0 8px rgba(180, 50, 255, 0.3);
-}
-
-.node-prompt-input::placeholder {
-  color: #666;
-}
-
-.node-execute-btn {
-  width: 100%;
-  padding: 8px;
-  background: rgba(0, 217, 255, 0.2);
-  border: 1px solid #00D9FF;
-  border-radius: 4px;
-  color: #00D9FF;
-  font-size: 12px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: background 0.2s;
 }
 
-.node-execute-btn:hover:not(:disabled) {
-  background: rgba(0, 217, 255, 0.3);
-  box-shadow: 0 0 10px rgba(0, 217, 255, 0.4);
+.node-action-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
-.node-execute-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.action-icon {
+  font-size: 16px;
 }
 
-.node-status {
+.node-status-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 4px 12px;
+  border-radius: 12px;
   font-size: 12px;
-  color: #888;
+  backdrop-filter: blur(8px);
 }
 
-.node-status.status-running {
+.node-status-badge.status-running {
+  background: rgba(0, 217, 255, 0.2);
   color: #00D9FF;
 }
 
-.node-status.status-completed {
+.node-status-badge.status-completed {
+  background: rgba(0, 255, 136, 0.2);
   color: #00ff88;
 }
 
-.node-status.status-error {
+.node-status-badge.status-error {
+  background: rgba(255, 68, 68, 0.2);
   color: #ff4444;
 }
 
-.node-progress {
-  margin-top: 8px;
+/* 生成卡片 - 在节点下方展开 */
+.generator-card {
+  position: absolute;
+  top: calc(100% + 16px);
+  left: 0;
+  width: 100%;
+  min-width: 640px;
+  background: #262626;
+  border: 1px solid rgba(0, 217, 255, 0.3);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+
+.generator-content {
+  padding: 16px;
+}
+
+.generator-input {
+  width: 100%;
+  padding: 12px;
+  background: rgba(0, 217, 255, 0.05);
+  border: 1px solid rgba(0, 217, 255, 0.3);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 14px;
+  font-family: inherit;
+  resize: none;
+  margin-bottom: 12px;
+}
+
+.generator-input:focus {
+  outline: none;
+  border-color: #00D9FF;
+}
+
+.generator-input::placeholder {
+  color: #666;
+}
+
+.generator-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.generator-options {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+}
+
+.option-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.option-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.chevron {
+  font-size: 10px;
+  color: #888;
+}
+
+.generate-btn {
+  padding: 8px 24px;
+  background: rgba(0, 217, 255, 0.2);
+  border: 1px solid #00D9FF;
+  border-radius: 8px;
+  color: #00D9FF;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.generate-btn:hover:not(:disabled) {
+  background: rgba(0, 217, 255, 0.3);
+  box-shadow: 0 0 15px rgba(0, 217, 255, 0.4);
+}
+
+.generate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .progress-bar {
@@ -295,6 +343,7 @@ const nodeClass = computed(() => `node-type-${props.type}`)
   background: rgba(0, 217, 255, 0.1);
   border-radius: 2px;
   overflow: hidden;
+  margin-top: 12px;
 }
 
 .progress-fill {
@@ -303,16 +352,82 @@ const nodeClass = computed(() => `node-type-${props.type}`)
   transition: width 0.3s;
 }
 
+/* 连接点样式 */
 :deep(.custom-handle) {
-  width: 10px;
-  height: 10px;
-  background: #00D9FF;
-  border: 2px solid #020308;
-  box-shadow: 0 0 8px #00D9FF;
+  width: 0;
+  height: 0;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
 }
 
-:deep(.custom-handle:hover) {
-  background: #B432FF;
-  box-shadow: 0 0 12px #B432FF;
+:deep(.custom-handle::before) {
+  content: '';
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: auto;
+}
+
+:deep(.custom-handle.target::before) {
+  right: 0;
+  transform: translate(25px, -50%);
+}
+
+:deep(.custom-handle.source::before) {
+  left: 0;
+  transform: translate(-25px, -50%);
+}
+
+:deep(.custom-handle::after) {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #00D9FF;
+  border: 2px solid #020308;
+  top: 50%;
+  opacity: 0;
+  transition: all 0.2s;
+  pointer-events: none;
+}
+
+:deep(.custom-handle.target::after) {
+  right: 0;
+  transform: translate(25px, -50%);
+}
+
+:deep(.custom-handle.source::after) {
+  left: 0;
+  transform: translate(-25px, -50%);
+}
+
+:deep(.custom-handle:hover::after) {
+  opacity: 1;
+  box-shadow: 0 0 12px #00D9FF;
+}
+
+/* 展开动画 */
+.expand-enter-active,
+.expand-leave-active {
+  transition: all 0.3s ease;
+}
+
+.expand-enter-from {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.expand-leave-to {
+  opacity: 0;
+  transform: translateY(-20px);
 }
 </style>
