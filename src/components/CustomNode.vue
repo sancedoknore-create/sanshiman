@@ -40,15 +40,21 @@
             <div class="progress-number">{{ data.progress || 0 }}%</div>
             <div class="progress-text">生成中...</div>
           </div>
-          <!-- 已完成 - 显示视频（可播放） -->
-          <video
-            v-else-if="data.status === 'completed' && data.outputVideo"
-            :src="data.outputVideo"
-            class="generated-preview video-preview"
-            controls
-            preload="metadata"
-            @loadedmetadata="onVideoLoaded"
-          />
+          <!-- 已完成 - 显示视频首帧，点击播放 -->
+          <div v-else-if="data.status === 'completed' && data.outputVideo" class="video-thumbnail" @click.stop="playVideo">
+            <video
+              ref="videoThumbnailRef"
+              :src="data.outputVideo"
+              class="generated-preview"
+              preload="metadata"
+              @loadedmetadata="onVideoLoaded"
+            />
+            <div class="play-overlay">
+              <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 16 16" fill="white">
+                <path d="M4.66699 2.64248C4.66717 1.82358 5.59736 1.35167 6.25781 1.83584L13.5674 7.19619C14.1117 7.59579 14.1118 8.40897 13.5674 8.8085L6.25781 14.1688C5.59734 14.6528 4.6671 14.1811 4.66699 13.3622V2.64248Z"/>
+              </svg>
+            </div>
+          </div>
           <!-- 默认 - 显示图标 -->
           <div v-else class="node-icon-large">
             <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 16 16" fill="currentColor">
