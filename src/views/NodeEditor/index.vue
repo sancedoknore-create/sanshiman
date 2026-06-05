@@ -8,6 +8,7 @@
       :max-zoom="4"
       :snap-to-grid="true"
       :snap-grid="[15, 15]"
+      :is-valid-connection="isValidConnection"
       @pane-context-menu="onPaneContextMenu"
       @node-context-menu="onNodeContextMenu"
       @node-click="onNodeClick"
