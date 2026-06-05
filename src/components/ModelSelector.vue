@@ -45,10 +45,12 @@ interface VideoModel {
 
 interface Props {
   modelValue?: string
+  models?: VideoModel[] // 支持外部传入模型列表
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  modelValue: 'seedance-2.0'
+  modelValue: 'seedance-2.0',
+  models: undefined // 如果不传则使用默认列表
 })
 
 const emit = defineEmits<{
@@ -71,8 +73,8 @@ watch(openSelector, (currentOpen) => {
   }
 })
 
-// 模型列表 - 可以从API动态加载
-const models: VideoModel[] = [
+// 默认模型列表（如果没有从API加载）
+const defaultModels: VideoModel[] = [
   {
     id: 'seedance-2.0',
     name: 'Seedance 2.0',
@@ -96,6 +98,9 @@ const models: VideoModel[] = [
     description: '创意风格',
   },
 ]
+
+// 使用传入的模型列表或默认列表
+const modelList = computed(() => props.models || defaultModels)
 
 const selectedModel = computed(() => {
   return models.find(m => m.id === props.modelValue)
