@@ -813,7 +813,6 @@ const statusText = computed(() => {
 .generator-content {
   position: relative;
 }
-}
 
 .generator-tabs {
   display: flex;
