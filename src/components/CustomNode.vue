@@ -104,17 +104,38 @@
             </label>
           </div>
 
-          <textarea
-            ref="textareaRef"
-            v-model="localPrompt"
-            @input="handlePromptInput"
-            @change="updatePrompt"
-            @click.stop
-            @keydown.stop
-            placeholder="描述你想要生成的画面内容，输入 @ 引用素材..."
-            class="generator-input"
-            rows="3"
-          ></textarea>
+          <!-- 提示词输入区域 -->
+          <div class="prompt-area">
+            <!-- 富文本显示层 - 显示素材徽章 -->
+            <div class="prompt-display" @click="focusTextarea">
+              <template v-for="(part, index) in promptParts" :key="index">
+                <span v-if="part.type === 'text'">{{ part.content }}</span>
+                <span v-else-if="part.type === 'mention'" class="asset-badge">
+                  <img v-if="part.asset?.type === 'image'" :src="part.asset.url" alt="" class="badge-thumbnail" />
+                  <svg v-else-if="part.asset?.type === 'video'" class="badge-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M4.66699 2.64248C4.66717 1.82358 5.59736 1.35167 6.25781 1.83584L13.5674 7.19619C14.1117 7.59579 14.1118 8.40897 13.5674 8.8085L6.25781 14.1688C5.59734 14.6528 4.6671 14.1811 4.66699 13.3622V2.64248Z"/>
+                  </svg>
+                  <svg v-else class="badge-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                  </svg>
+                  <span class="badge-name">{{ part.asset?.name || '素材' }}</span>
+                </span>
+              </template>
+              <span v-if="!localPrompt" class="prompt-placeholder">描述你想要生成的画面内容，输入 @ 引用素材...</span>
+            </div>
+
+            <!-- 实际的textarea（隐藏） -->
+            <textarea
+              ref="textareaRef"
+              v-model="localPrompt"
+              @input="handlePromptInput"
+              @change="updatePrompt"
+              @click.stop
+              @keydown.stop
+              class="generator-input hidden-textarea"
+              rows="3"
+            ></textarea>
+          </div>
 
           <!-- @ 提及素材列表 -->
           <transition name="mention">
@@ -223,6 +244,51 @@ const showAssetMention = ref(false)
 const mentionPosition = ref({ top: 0, left: 0 })
 const mentionFilter = ref('')
 const textareaRef = ref<HTMLTextAreaElement>()
+
+// 聚焦textarea
+const focusTextarea = () => {
+  textareaRef.value?.focus()
+}
+
+// 解析提示词，将@引用转换为可视化部分
+const promptParts = computed(() => {
+  if (!localPrompt.value) return []
+
+  const parts: Array<{ type: 'text' | 'mention'; content?: string; asset?: any }> = []
+  const mentionRegex = /@\[([^\]]+)\]\(([^)]+)\)/g
+  let lastIndex = 0
+  let match
+
+  while ((match = mentionRegex.exec(localPrompt.value)) !== null) {
+    // 添加 @ 前面的文本
+    if (match.index > lastIndex) {
+      parts.push({
+        type: 'text',
+        content: localPrompt.value.substring(lastIndex, match.index)
+      })
+    }
+
+    // 添加提及徽章
+    const assetId = match[2]
+    const asset = allAssets.value.find(a => a.id === assetId)
+    parts.push({
+      type: 'mention',
+      asset
+    })
+
+    lastIndex = match.index + match[0].length
+  }
+
+  // 添加剩余文本
+  if (lastIndex < localPrompt.value.length) {
+    parts.push({
+      type: 'text',
+      content: localPrompt.value.substring(lastIndex)
+    })
+  }
+
+  return parts
+})
 
 // 处理输入框输入
 const handlePromptInput = (event: Event) => {
