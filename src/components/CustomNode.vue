@@ -615,6 +615,7 @@ const statusText = computed(() => {
 
 .generator-content {
   padding: 16px;
+  position: relative;
 }
 
 .generator-tabs {
