@@ -29,7 +29,7 @@
 
     <!-- 生成卡片 - 选中时在底部展开 -->
     <transition name="expand">
-      <div v-if="isSelected" class="generator-card">
+      <div v-if="isSelected" class="generator-card" :style="{ width: nodeSize.width + 'px' }">
         <div class="generator-content">
           <!-- 视频节点选项卡 -->
           <div v-if="type === 'ai-video'" class="generator-tabs">
