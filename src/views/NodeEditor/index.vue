@@ -55,7 +55,7 @@ import { useNodeStore } from '@/stores/node'
 const nodeStore = useNodeStore()
 const showProperties = ref(false)
 
-const { addNodes, project } = useVueFlow({
+const { project, onConnect } = useVueFlow({
   nodeTypes: {
     'ai-image': markRaw(CustomNode),
     'ai-video': markRaw(CustomNode),
@@ -66,6 +66,17 @@ const { addNodes, project } = useVueFlow({
   edgeTypes: {
     'animated': markRaw(AnimatedEdge),
   },
+})
+
+// 监听连线创建
+onConnect((connection) => {
+  const edge: Edge = {
+    id: `e${connection.source}-${connection.target}`,
+    source: connection.source,
+    target: connection.target,
+    type: 'animated',
+  }
+  nodeStore.addEdge(edge)
 })
 
 // 初始化示例节点
@@ -194,7 +205,7 @@ const addNodeByType = (type: string) => {
     },
   }
 
-  addNodes([newNode])
+  // 只添加到nodeStore，Vue Flow通过v-model自动同步
   nodeStore.addNode(newNode)
 }
 
