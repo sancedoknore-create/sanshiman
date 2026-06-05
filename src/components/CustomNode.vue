@@ -1016,74 +1016,58 @@ const statusText = computed(() => {
   margin-bottom: 12px;
   line-height: 1.5;
   outline: none;
+  min-height: 80px;
+}
+
+.generator-input.editable {
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.generator-input.editable:empty:before {
+  content: attr(data-placeholder);
+  color: #666;
+  pointer-events: none;
 }
 
 .generator-input:focus {
   border-color: #00D9FF;
 }
 
-.generator-input::placeholder {
-  color: #666;
-}
-
-/* 已引用素材 */
-.referenced-assets {
-  margin-bottom: 12px;
-  padding: 8px;
-  background: rgba(0, 217, 255, 0.05);
-  border: 1px solid rgba(0, 217, 255, 0.2);
-  border-radius: 8px;
-}
-
-.referenced-label {
-  font-size: 11px;
-  color: #888;
-  margin-bottom: 6px;
-}
-
-.referenced-list {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.referenced-item {
-  display: flex;
+/* 素材徽章 */
+.asset-badge {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  background: rgba(0, 217, 255, 0.1);
+  gap: 4px;
+  padding: 2px 8px;
+  background: rgba(0, 217, 255, 0.15);
   border: 1px solid rgba(0, 217, 255, 0.3);
-  border-radius: 6px;
+  border-radius: 12px;
+  color: #00D9FF;
+  font-size: 12px;
+  vertical-align: middle;
+  margin: 0 2px;
+  cursor: default;
+  user-select: none;
 }
 
-.referenced-thumbnail {
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.05);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.badge-thumbnail {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  object-fit: cover;
   flex-shrink: 0;
 }
 
-.referenced-thumbnail img,
-.referenced-thumbnail video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.badge-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
 }
 
-.referenced-thumbnail svg {
-  color: #00D9FF;
-}
-
-.referenced-name {
-  font-size: 12px;
-  color: #00D9FF;
-  max-width: 120px;
+.badge-name {
+  max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
