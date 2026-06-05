@@ -201,9 +201,16 @@
                 <RatioSelector v-model="selectedRatio" :capabilities="currentModelCapabilities" />
               </template>
 
-              <!-- 图片节点：简单按钮 -->
+              <!-- 图片节点：模型 + 尺寸 + 风格选择器 -->
+              <template v-else-if="type === 'ai-image'">
+                <ModelSelector v-model="selectedModel" :models="imageModels" />
+                <SizeSelector v-model="selectedSize" />
+                <StyleSelector v-model="selectedStyle" />
+              </template>
+
+              <!-- 其他节点：简单按钮 -->
               <button v-else class="option-btn">
-                <span>1024x1024</span>
+                <span>选项</span>
                 <span class="chevron">▼</span>
               </button>
             </div>
