@@ -14,7 +14,7 @@
           <div class="section-title">比例</div>
           <div class="ratio-grid">
             <button
-              v-for="option in ratioOptions"
+              v-for="option in availableRatios"
               :key="option.value"
               class="ratio-option"
               :class="{ active: modelValue === option.value }"
@@ -32,7 +32,7 @@
           <div class="section-title">分辨率</div>
           <div class="resolution-list">
             <button
-              v-for="res in resolutions"
+              v-for="res in availableResolutions"
               :key="res"
               class="resolution-option"
               :class="{ active: selectedResolution === res }"
@@ -63,7 +63,7 @@
           </div>
         </div>
 
-        <div class="dropdown-section">
+        <div v-if="audioAvailable" class="dropdown-section">
           <div class="audio-toggle">
             <span class="section-title">生成音频</span>
             <button
@@ -159,8 +159,10 @@ const maxDuration = computed(() => props.capabilities?.durationRange?.max ?? 15)
 // 根据模型能力决定是否显示音频开关
 const audioAvailable = computed(() => props.capabilities?.audioGeneration ?? true)
 
+const resolutions = ['480P', '720P', '1080P']
+
 const selectedOption = computed(() => {
-  return ratioOptions.find(opt => opt.value === props.modelValue) || ratioOptions[0]
+  return availableRatios.value.find(opt => opt.value === props.modelValue) || availableRatios.value[0]
 })
 
 const selectedIcon = computed(() => selectedOption.value.icon)

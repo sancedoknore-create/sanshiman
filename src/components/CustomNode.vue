@@ -59,7 +59,7 @@
               <!-- 视频节点：模型选择器 + 比例选择器 -->
               <template v-if="type === 'ai-video'">
                 <ModelSelector v-model="selectedModel" :models="availableModels" />
-                <RatioSelector v-model="selectedRatio" />
+                <RatioSelector v-model="selectedRatio" :capabilities="currentModelCapabilities" />
               </template>
 
               <!-- 图片节点：简单按钮 -->
@@ -125,6 +125,12 @@ const availableModels = ref<VideoModel[]>([])
 // 加载模型列表
 onMounted(() => {
   availableModels.value = getVideoModels()
+})
+
+// 当前选中模型的能力
+const currentModelCapabilities = computed(() => {
+  const model = availableModels.value.find(m => m.id === selectedModel.value)
+  return model?.capabilities
 })
 
 // 当前打开的选择器（用于互斥）
