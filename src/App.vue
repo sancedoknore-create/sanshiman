@@ -6,10 +6,13 @@
         <span class="project-name">{{ projectName }}</span>
       </div>
       <div class="top-bar-right">
-        <div class="ai-status">
-          <span class="status-indicator green"></span>
-          <span class="status-indicator green"></span>
-          <span class="status-indicator red"></span>
+        <div class="ai-status" title="点击查看AI服务配置" @click="navigateTo('/settings')">
+          <span
+            v-for="indicator in aiStatusIndicators"
+            :key="indicator.key"
+            :class="['status-indicator', getStatusClass(indicator.status)]"
+            :title="indicator.name + ': ' + indicator.status"
+          ></span>
         </div>
         <span class="user-section">用户</span>
       </div>
@@ -36,12 +39,22 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useAIStore } from '@/stores/ai'
 
 const router = useRouter()
 const route = useRoute()
+const aiStore = useAIStore()
 
 const projectName = ref('未命名项目')
 const currentRoute = computed(() => route.path)
+
+const aiStatusIndicators = computed(() => {
+  return Object.entries(aiStore.providers).map(([key, config]) => ({
+    key,
+    name: config.name,
+    status: config.status,
+  }))
+})
 
 const navItems = [
   { path: '/home', icon: '🏠', label: '主页' },
@@ -53,6 +66,16 @@ const navItems = [
 
 const navigateTo = (path: string) => {
   router.push(path)
+}
+
+const getStatusClass = (status: string): string => {
+  const classes: Record<string, string> = {
+    connected: 'green',
+    disconnected: 'yellow',
+    error: 'red',
+    unconfigured: 'gray',
+  }
+  return classes[status] || 'gray'
 }
 </script>
 
@@ -104,6 +127,14 @@ const navigateTo = (path: string) => {
 .ai-status {
   display: flex;
   gap: 8px;
+  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: 6px;
+  transition: background 0.3s;
+}
+
+.ai-status:hover {
+  background: rgba(0, 217, 255, 0.1);
 }
 
 .status-indicator {
