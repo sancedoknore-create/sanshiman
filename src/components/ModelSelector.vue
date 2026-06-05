@@ -160,7 +160,7 @@ onUnmounted(() => {
 
 .model-dropdown {
   position: absolute;
-  top: calc(100% + 8px);
+  bottom: calc(100% + 8px);
   left: 0;
   min-width: 320px;
   background: #262626;
@@ -241,7 +241,7 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-/* 下拉动画 */
+/* 下拉动画 - 向上弹出 */
 .dropdown-enter-active,
 .dropdown-leave-active {
   transition: all 0.2s ease;
@@ -249,11 +249,11 @@ onUnmounted(() => {
 
 .dropdown-enter-from {
   opacity: 0;
-  transform: translateY(-10px);
+  transform: translateY(10px);
 }
 
 .dropdown-leave-to {
   opacity: 0;
-  transform: translateY(-10px);
+  transform: translateY(10px);
 }
 </style>
