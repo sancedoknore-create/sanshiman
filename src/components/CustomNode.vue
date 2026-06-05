@@ -22,8 +22,15 @@
             <div class="progress-number">{{ data.progress || 0 }}%</div>
             <div class="progress-text">生成中...</div>
           </div>
-          <!-- 已完成 - 显示生成的图片 -->
-          <img v-else-if="data.status === 'completed' && data.outputImage" :src="data.outputImage" class="generated-preview" />
+          <!-- 已完成 - 显示生成的图片，点击预览 -->
+          <div v-else-if="data.status === 'completed' && data.outputImage" class="image-thumbnail" @click.stop="previewImage">
+            <img :src="data.outputImage" class="generated-preview" />
+            <div class="preview-overlay">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="white">
+                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
+              </svg>
+            </div>
+          </div>
           <!-- 默认 - 显示图标 -->
           <div v-else class="node-icon-large">
             <svg xmlns="http://www.w3.org/2000/svg" width="90" height="90" viewBox="0 0 66 66" fill="currentColor">
@@ -786,6 +793,7 @@ const selectNode = () => {
 const videoThumbnailRef = ref<HTMLVideoElement>()
 const videoPlayerRef = ref<HTMLVideoElement>()
 const showVideoModal = ref(false)
+const showImageModal = ref(false)
 
 // 视频加载完成，定位到第一帧
 const onVideoLoaded = (event: Event) => {
@@ -804,6 +812,16 @@ const closeVideo = () => {
   if (videoPlayerRef.value) {
     videoPlayerRef.value.pause()
   }
+}
+
+// 预览图片（弹窗）
+const previewImage = () => {
+  showImageModal.value = true
+}
+
+// 关闭图片弹窗
+const closeImage = () => {
+  showImageModal.value = false
 }
 
 const updatePrompt = () => {
