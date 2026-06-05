@@ -926,12 +926,105 @@ const statusText = computed(() => {
   border-radius: 8px;
 }
 
-.video-preview {
+/* 视频首帧缩略图 */
+.video-thumbnail {
+  position: relative;
+  width: 100%;
+  height: 100%;
   cursor: pointer;
+  overflow: hidden;
+  border-radius: 8px;
 }
 
-.video-preview::-webkit-media-controls-panel {
-  background: rgba(2, 3, 8, 0.8);
+.play-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 217, 255, 0.3);
+  border-radius: 50%;
+  backdrop-filter: blur(4px);
+  transition: all 0.3s;
+  pointer-events: none;
+}
+
+.video-thumbnail:hover .play-overlay {
+  background: rgba(0, 217, 255, 0.5);
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.play-overlay svg {
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+}
+
+/* 视频播放弹窗 */
+.video-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.video-modal-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-modal-player {
+  max-width: 100%;
+  max-height: 90vh;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 217, 255, 0.3);
+}
+
+.video-modal-close {
+  position: absolute;
+  top: -50px;
+  right: 0;
+  width: 40px;
+  height: 40px;
+  background: rgba(0, 217, 255, 0.2);
+  border: 1px solid #00D9FF;
+  border-radius: 50%;
+  color: #00D9FF;
+  font-size: 28px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  line-height: 1;
+  padding: 0;
+}
+
+.video-modal-close:hover {
+  background: rgba(0, 217, 255, 0.4);
+  transform: rotate(90deg);
 }
 
 .node-title-main {
