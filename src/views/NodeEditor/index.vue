@@ -1,5 +1,5 @@
 <template>
-  <div class="node-editor">
+  <div class="node-editor" @contextmenu="handleContextMenu">
     <VueFlow
       v-model:nodes="nodes"
       v-model:edges="edges"
@@ -347,6 +347,18 @@ const onPaneContextMenu = (event: MouseEvent) => {
     { label: '上传素材', icon: '📤', action: 'upload-asset' },
   ]
   contextMenu.data = { clientX: event.clientX, clientY: event.clientY }
+}
+
+// 处理原生右键事件（备用）
+const handleContextMenu = (event: MouseEvent) => {
+  const target = event.target as HTMLElement
+  // 只处理画布背景的右键，不处理节点
+  if (target.classList.contains('vue-flow__pane') ||
+      target.classList.contains('vue-flow__background') ||
+      target.closest('.vue-flow__pane') ||
+      target.closest('.vue-flow__background')) {
+    onPaneContextMenu(event)
+  }
 }
 
 // 节点右键菜单
