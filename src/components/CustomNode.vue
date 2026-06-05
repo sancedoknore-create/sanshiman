@@ -74,8 +74,12 @@
               @click.stop="executeNode"
               :disabled="data.status === 'running'"
             >
-              <span v-if="data.status === 'running'">生成中...</span>
-              <span v-else>生成</span>
+              <svg v-if="data.status !== 'running'" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M4.66699 2.64248C4.66717 1.82358 5.59736 1.35167 6.25781 1.83584L13.5674 7.19619C14.1117 7.59579 14.1118 8.40897 13.5674 8.8085L6.25781 14.1688C5.59734 14.6528 4.6671 14.1811 4.66699 13.3622V2.64248Z"/>
+              </svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M2 2h4v12H2V2zm8 0h4v12h-4V2z"/>
+              </svg>
             </button>
           </div>
 
@@ -464,7 +468,12 @@ const statusText = computed(() => {
 }
 
 .generate-btn {
-  padding: 8px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  height: 36px;
+  padding: 0 20px;
   background: rgba(0, 217, 255, 0.2);
   border: 1px solid #00D9FF;
   border-radius: 8px;
@@ -484,6 +493,10 @@ const statusText = computed(() => {
 .generate-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.generate-btn svg {
+  flex-shrink: 0;
 }
 
 .progress-bar {
