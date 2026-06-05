@@ -330,8 +330,10 @@ const activePropertyTab = ref('camera')
 
 // 场景对象
 const sceneObjects = ref([
-  { id: 'cube1', name: '立方体', icon: '🟦', visible: true, type: 'cube' },
-  { id: 'sphere1', name: '球体', icon: '🟢', visible: true, type: 'sphere' },
+  { id: 'man', name: '男人', icon: '👨', visible: true, type: 'character' },
+  { id: 'woman', name: '女人', icon: '👩', visible: true, type: 'character' },
+  { id: 'child', name: '小孩', icon: '🧒', visible: true, type: 'character' },
+  { id: 'elder', name: '老人', icon: '🧓', visible: true, type: 'character' },
   { id: 'plane1', name: '地面', icon: '🟫', visible: true, type: 'plane' },
 ])
 const selectedObjectId = ref<string | null>(null)
@@ -480,31 +482,210 @@ const initThreeScene = () => {
   window.addEventListener('resize', onWindowResize)
 }
 
+// 创建人物模型（用基础几何体组合）
+const createCharacter = (config: {
+  position: [number, number, number]
+  bodyColor: number
+  headColor: number
+  pantsColor: number
+  height: number // 总身高
+  bodyWidth: number // 身体宽度
+  isChild?: boolean
+  isElder?: boolean
+}) => {
+  const group = new THREE.Group()
+  const { bodyColor, headColor, pantsColor, height, bodyWidth, isChild, isElder } = config
+
+  // 计算各部位尺寸（按身高比例）
+  const headSize = isChild ? height * 0.18 : height * 0.13
+  const torsoHeight = height * 0.35
+  const legHeight = height * 0.42
+  const armHeight = height * 0.35
+
+  // === 头部 ===
+  const headGeo = new THREE.SphereGeometry(headSize, 24, 24)
+  const headMat = new THREE.MeshStandardMaterial({
+    color: headColor,
+    roughness: 0.7,
+    metalness: 0.05,
+  })
+  const head = new THREE.Mesh(headGeo, headMat)
+  head.position.y = legHeight + torsoHeight + headSize * 0.9
+  head.castShadow = true
+  head.receiveShadow = true
+  group.add(head)
+
+  // === 头发（老人是白色，其他人深色或棕色） ===
+  if (!isElder) {
+    const hairGeo = new THREE.SphereGeometry(headSize * 1.05, 24, 24, 0, Math.PI * 2, 0, Math.PI * 0.55)
+    const hairMat = new THREE.MeshStandardMaterial({
+      color: isChild ? 0x4a3528 : 0x2a1810,
+      roughness: 0.9,
+    })
+    const hair = new THREE.Mesh(hairGeo, hairMat)
+    hair.position.y = head.position.y + headSize * 0.1
+    hair.castShadow = true
+    group.add(hair)
+  } else {
+    // 老人头发（白色，稀疏）
+    const hairGeo = new THREE.SphereGeometry(headSize * 1.02, 24, 24, 0, Math.PI * 2, 0, Math.PI * 0.4)
+    const hairMat = new THREE.MeshStandardMaterial({
+      color: 0xeeeeee,
+      roughness: 0.95,
+    })
+    const hair = new THREE.Mesh(hairGeo, hairMat)
+    hair.position.y = head.position.y + headSize * 0.15
+    hair.castShadow = true
+    group.add(hair)
+  }
+
+  // === 身体（驱干） ===
+  const torsoGeo = new THREE.CylinderGeometry(bodyWidth * 0.5, bodyWidth * 0.55, torsoHeight, 16)
+  const torsoMat = new THREE.MeshStandardMaterial({
+    color: bodyColor,
+    roughness: 0.6,
+    metalness: 0.1,
+  })
+  const torso = new THREE.Mesh(torsoGeo, torsoMat)
+  torso.position.y = legHeight + torsoHeight / 2
+  torso.castShadow = true
+  torso.receiveShadow = true
+  group.add(torso)
+
+  // === 脖子 ===
+  const neckGeo = new THREE.CylinderGeometry(headSize * 0.4, headSize * 0.5, headSize * 0.4, 12)
+  const neck = new THREE.Mesh(neckGeo, headMat)
+  neck.position.y = legHeight + torsoHeight + headSize * 0.2
+  neck.castShadow = true
+  group.add(neck)
+
+  // === 双臂 ===
+  const armGeo = new THREE.CylinderGeometry(bodyWidth * 0.13, bodyWidth * 0.15, armHeight, 12)
+  const armMat = new THREE.MeshStandardMaterial({
+    color: bodyColor,
+    roughness: 0.6,
+  })
+
+  const leftArm = new THREE.Mesh(armGeo, armMat)
+  leftArm.position.set(-bodyWidth * 0.65, legHeight + torsoHeight - armHeight / 2 + headSize * 0.1, 0)
+  leftArm.castShadow = true
+  group.add(leftArm)
+
+  const rightArm = new THREE.Mesh(armGeo, armMat)
+  rightArm.position.set(bodyWidth * 0.65, legHeight + torsoHeight - armHeight / 2 + headSize * 0.1, 0)
+  rightArm.castShadow = true
+  group.add(rightArm)
+
+  // === 手 ===
+  const handGeo = new THREE.SphereGeometry(bodyWidth * 0.16, 12, 12)
+  const leftHand = new THREE.Mesh(handGeo, headMat)
+  leftHand.position.set(-bodyWidth * 0.65, legHeight + torsoHeight - armHeight + headSize * 0.05, 0)
+  leftHand.castShadow = true
+  group.add(leftHand)
+
+  const rightHand = new THREE.Mesh(handGeo, headMat)
+  rightHand.position.set(bodyWidth * 0.65, legHeight + torsoHeight - armHeight + headSize * 0.05, 0)
+  rightHand.castShadow = true
+  group.add(rightHand)
+
+  // === 双腿 ===
+  const legGeo = new THREE.CylinderGeometry(bodyWidth * 0.18, bodyWidth * 0.16, legHeight, 12)
+  const legMat = new THREE.MeshStandardMaterial({
+    color: pantsColor,
+    roughness: 0.7,
+  })
+
+  const leftLeg = new THREE.Mesh(legGeo, legMat)
+  leftLeg.position.set(-bodyWidth * 0.22, legHeight / 2, 0)
+  leftLeg.castShadow = true
+  group.add(leftLeg)
+
+  const rightLeg = new THREE.Mesh(legGeo, legMat)
+  rightLeg.position.set(bodyWidth * 0.22, legHeight / 2, 0)
+  rightLeg.castShadow = true
+  group.add(rightLeg)
+
+  // === 鞋 ===
+  const shoeGeo = new THREE.BoxGeometry(bodyWidth * 0.35, bodyWidth * 0.18, bodyWidth * 0.55)
+  const shoeMat = new THREE.MeshStandardMaterial({
+    color: 0x2a2a2a,
+    roughness: 0.5,
+  })
+
+  const leftShoe = new THREE.Mesh(shoeGeo, shoeMat)
+  leftShoe.position.set(-bodyWidth * 0.22, bodyWidth * 0.09, bodyWidth * 0.1)
+  leftShoe.castShadow = true
+  group.add(leftShoe)
+
+  const rightShoe = new THREE.Mesh(shoeGeo, shoeMat)
+  rightShoe.position.set(bodyWidth * 0.22, bodyWidth * 0.09, bodyWidth * 0.1)
+  rightShoe.castShadow = true
+  group.add(rightShoe)
+
+  // 设置位置
+  group.position.set(...config.position)
+  return group
+}
+
 // 添加默认对象
 const addDefaultObjects = () => {
-  // 立方体
-  const cubeGeometry = new THREE.BoxGeometry(1.5, 1.5, 1.5)
-  const cubeMaterial = new THREE.MeshStandardMaterial({ color: 0x00d9ff, metalness: 0.3, roughness: 0.4 })
-  const cube = new THREE.Mesh(cubeGeometry, cubeMaterial)
-  cube.position.set(-2, 0.75, 0)
-  cube.castShadow = true
-  cube.receiveShadow = true
-  threeScene.add(cube)
-  threeObjects.set('cube1', cube)
+  // === 男人 ===
+  const man = createCharacter({
+    position: [-3, 0, 0],
+    bodyColor: 0x3a6fb5, // 蓝色衬衫
+    headColor: 0xfdbcb4, // 肤色
+    pantsColor: 0x2a2a3e, // 深色裤子
+    height: 1.85,
+    bodyWidth: 0.55,
+  })
+  threeScene.add(man)
+  threeObjects.set('man', man)
 
-  // 球体
-  const sphereGeometry = new THREE.SphereGeometry(1, 32, 32)
-  const sphereMaterial = new THREE.MeshStandardMaterial({ color: 0xb432ff, metalness: 0.5, roughness: 0.3 })
-  const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial)
-  sphere.position.set(2, 1, 0)
-  sphere.castShadow = true
-  sphere.receiveShadow = true
-  threeScene.add(sphere)
-  threeObjects.set('sphere1', sphere)
+  // === 女人 ===
+  const woman = createCharacter({
+    position: [-1, 0, 0],
+    bodyColor: 0xd14b8c, // 粉红色上衣
+    headColor: 0xfdcfc0, // 肤色
+    pantsColor: 0x4a3a5a, // 深紫色裙子/裤子
+    height: 1.7,
+    bodyWidth: 0.48,
+  })
+  threeScene.add(woman)
+  threeObjects.set('woman', woman)
 
-  // 地面
-  const planeGeometry = new THREE.PlaneGeometry(20, 20)
-  const planeMaterial = new THREE.MeshStandardMaterial({ color: 0x222244, side: THREE.DoubleSide })
+  // === 小孩 ===
+  const child = createCharacter({
+    position: [1, 0, 0],
+    bodyColor: 0xffd966, // 黄色T恤
+    headColor: 0xfdcfc0, // 肤色
+    pantsColor: 0x4287f5, // 蓝色短裤
+    height: 1.0,
+    bodyWidth: 0.38,
+    isChild: true,
+  })
+  threeScene.add(child)
+  threeObjects.set('child', child)
+
+  // === 老人 ===
+  const elder = createCharacter({
+    position: [3, 0, 0],
+    bodyColor: 0x8a6f4f, // 米色毛衣
+    headColor: 0xe8b89e, // 肤色
+    pantsColor: 0x5a5a4a, // 灰褐色裤子
+    height: 1.65,
+    bodyWidth: 0.5,
+    isElder: true,
+  })
+  threeScene.add(elder)
+  threeObjects.set('elder', elder)
+
+  // === 地面 ===
+  const planeGeometry = new THREE.PlaneGeometry(30, 30)
+  const planeMaterial = new THREE.MeshStandardMaterial({
+    color: 0x222244,
+    side: THREE.DoubleSide,
+    roughness: 0.9,
+  })
   const plane = new THREE.Mesh(planeGeometry, planeMaterial)
   plane.rotation.x = -Math.PI / 2
   plane.receiveShadow = true
