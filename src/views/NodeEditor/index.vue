@@ -344,6 +344,7 @@ const onPaneContextMenu = (event: MouseEvent) => {
     { label: '添加3D导演台节点', icon: '🎭', action: 'add-3d-scene' },
     { label: '添加资产引用节点', icon: '📦', action: 'add-asset-ref' },
     { label: '添加后处理节点', icon: '⚡', action: 'add-post-process' },
+    { label: '上传素材', icon: '📤', action: 'upload-asset' },
   ]
   contextMenu.data = { clientX: event.clientX, clientY: event.clientY }
 }
