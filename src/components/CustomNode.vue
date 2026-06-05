@@ -181,8 +181,8 @@
     </transition>
 
     <!-- 连接点 -->
-    <Handle type="target" :position="Position.Left" class="custom-handle" />
-    <Handle type="source" :position="Position.Right" class="custom-handle" />
+    <Handle type="target" :position="Position.Left" id="target" class="custom-handle" />
+    <Handle type="source" :position="Position.Right" id="source" class="custom-handle" />
   </div>
 </template>
 
