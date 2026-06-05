@@ -83,6 +83,12 @@
             class="project-card"
             @click="openProject(project)"
           >
+            <button class="project-delete" @click.stop="deleteProject(project.id)" title="删除项目">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
             <div class="project-thumbnail">
               <img v-if="project.thumbnail" :src="project.thumbnail" :alt="project.name" />
               <div v-else class="project-placeholder">
@@ -302,6 +308,13 @@ const createNode = (type: string) => {
 // 打开项目
 const openProject = (project: Project) => {
   router.push({ path: '/nodes', query: { project: project.id } })
+}
+
+// 删除项目
+const deleteProject = (projectId: string) => {
+  if (confirm('确定要删除这个项目吗？此操作不可撤销。')) {
+    recentProjects.value = recentProjects.value.filter(p => p.id !== projectId)
+  }
 }
 
 // 导航
@@ -562,6 +575,7 @@ const formatDate = (timestamp: number) => {
 }
 
 .project-card {
+  position: relative;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
@@ -579,6 +593,38 @@ const formatDate = (timestamp: number) => {
 
 .project-card:hover .project-overlay {
   opacity: 1;
+}
+
+.project-card:hover .project-delete {
+  opacity: 1;
+}
+
+.project-delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.2s;
+  z-index: 2;
+  backdrop-filter: blur(8px);
+  padding: 0;
+}
+
+.project-delete:hover {
+  background: rgba(255, 80, 80, 0.85);
+  border-color: rgba(255, 100, 100, 0.8);
+  color: #ffffff;
+  transform: scale(1.1);
 }
 
 .project-thumbnail {
