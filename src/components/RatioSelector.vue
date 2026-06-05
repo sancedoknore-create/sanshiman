@@ -97,6 +97,7 @@ const selectedDuration = ref(15) // 改为数字
 const ratioOptions: RatioOption[] = [
   { label: 'Auto', value: 'auto', aspect: '16/9', icon: '⚡' },
   { label: '16:9', value: '16:9', aspect: '16/9', icon: '▭' },
+  { label: '21:9', value: '21:9', aspect: '21/9', icon: '▬' },
   { label: '9:16', value: '9:16', aspect: '9/16', icon: '▯' },
   { label: '1:1', value: '1:1', aspect: '1/1', icon: '□' },
   { label: '4:3', value: '4:3', aspect: '4/3', icon: '▭' },
@@ -213,7 +214,7 @@ onUnmounted(() => {
 
 .ratio-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(7, 1fr);
   gap: 8px;
 }
 

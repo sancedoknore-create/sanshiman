@@ -122,8 +122,9 @@ const nodeSize = computed(() => {
 
   const baseHeight = 350
   const ratioMap: Record<string, number> = {
-    'auto': 16 / 9,
+    'auto': 16 / 9, // Auto显示为16:9
     '16:9': 16 / 9,
+    '21:9': 21 / 9,
     '9:16': 9 / 16,
     '1:1': 1 / 1,
     '4:3': 4 / 3,
