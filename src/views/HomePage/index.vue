@@ -24,7 +24,7 @@
           </h1>
           <p class="hero-subtitle">用节点构建你的创意视频，AI驱动的可视化创作平台</p>
           <div class="hero-actions">
-            <button class="hero-btn primary" @click="navigateTo('/nodes')">
+            <button class="hero-btn primary" @click="openNewProjectDialog">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M8 0a1 1 0 011 1v6h6a1 1 0 110 2H9v6a1 1 0 11-2 0V9H1a1 1 0 010-2h6V1a1 1 0 011-1z"/>
               </svg>
@@ -113,8 +113,7 @@
     </div>
 
     <!-- 左下角背景设置齿轮 -->
-    <div class="bg-settings">
-      <button class="bg-gear-btn" @click="toggleBgMenu" title="主页设置">
+    <div class="bg-settings">      <button class="bg-gear-btn" @click="toggleBgMenu" title="主页设置">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="3"></circle>
           <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"></path>
@@ -151,11 +150,49 @@
         </div>
       </transition>
     </div>
+
+    <!-- 新建项目弹窗 -->
+    <Teleport to="body">
+      <transition name="modal">
+        <div v-if="showNewProjectDialog" class="modal-overlay" @click="closeNewProjectDialog">
+          <div class="modal-content" @click.stop>
+            <div class="modal-header">
+              <h3 class="modal-title">新建项目</h3>
+              <button class="modal-close" @click="closeNewProjectDialog">×</button>
+            </div>
+            <div class="modal-body">
+              <label class="modal-label">项目名称</label>
+              <input
+                ref="projectNameInputRef"
+                v-model="newProjectName"
+                type="text"
+                class="modal-input"
+                placeholder="请输入项目名称..."
+                maxlength="50"
+                @keyup.enter="confirmNewProject"
+                @keyup.escape="closeNewProjectDialog"
+              />
+              <div class="modal-hint">{{ newProjectName.length }} / 50</div>
+            </div>
+            <div class="modal-footer">
+              <button class="modal-btn ghost" @click="closeNewProjectDialog">取消</button>
+              <button
+                class="modal-btn primary"
+                @click="confirmNewProject"
+                :disabled="!newProjectName.trim()"
+              >
+                创建
+              </button>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -163,6 +200,41 @@ const bgInputRef = ref<HTMLInputElement>()
 const customBackground = ref<string>('')
 const customBackgroundType = ref<'image' | 'video'>('image')
 const showBgMenu = ref(false)
+
+// 新建项目弹窗
+const showNewProjectDialog = ref(false)
+const newProjectName = ref('')
+const projectNameInputRef = ref<HTMLInputElement>()
+
+const openNewProjectDialog = async () => {
+  showNewProjectDialog.value = true
+  newProjectName.value = ''
+  await nextTick()
+  setTimeout(() => {
+    projectNameInputRef.value?.focus()
+  }, 100)
+}
+
+const closeNewProjectDialog = () => {
+  showNewProjectDialog.value = false
+  newProjectName.value = ''
+}
+
+const confirmNewProject = () => {
+  const name = newProjectName.value.trim()
+  if (!name) return
+
+  // 创建新项目并跳转到画布
+  router.push({
+    path: '/nodes',
+    query: {
+      newProject: 'true',
+      name: encodeURIComponent(name),
+    }
+  })
+
+  showNewProjectDialog.value = false
+}
 
 const toggleBgMenu = () => {
   showBgMenu.value = !showBgMenu.value
