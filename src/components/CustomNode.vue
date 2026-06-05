@@ -1024,6 +1024,11 @@ const statusText = computed(() => {
   cursor: text;
 }
 
+.generator-input.editable img {
+  max-width: 16px !important;
+  max-height: 16px !important;
+}
+
 .generator-input.editable:empty:before {
   content: attr(data-placeholder);
   color: #666;
