@@ -65,7 +65,8 @@ const nodeStore = useNodeStore()
 
 // 对齐辅助线
 const alignmentLines = ref<Array<{ id: string; type: 'horizontal' | 'vertical'; position: number }>>([])
-const ALIGNMENT_THRESHOLD = 5 // 对齐阈值（像素）
+const ALIGNMENT_THRESHOLD = 10 // 对齐阈值（像素）
+const MAX_ALIGNMENT_DISTANCE = 15 // 最大对齐距离（像素），超过不显示
 
 // 连接验证：只允许从source连接到target
 const isValidConnection = (connection: any) => {
@@ -144,9 +145,15 @@ const onNodeDrag = ({ node }: { node: Node }) => {
     }
   })
 
-  // 只显示最近的几条线（横竖各1条）
-  const horizontalLines = Array.from(uniqueLines.values()).filter(l => l.type === 'horizontal').sort((a, b) => a.distance - b.distance).slice(0, 1)
-  const verticalLines = Array.from(uniqueLines.values()).filter(l => l.type === 'vertical').sort((a, b) => a.distance - b.distance).slice(0, 1)
+  // 只显示最近的几条线（横竖各1条），且距离不能超过最大限制
+  const horizontalLines = Array.from(uniqueLines.values())
+    .filter(l => l.type === 'horizontal' && l.distance <= MAX_ALIGNMENT_DISTANCE)
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, 1)
+  const verticalLines = Array.from(uniqueLines.values())
+    .filter(l => l.type === 'vertical' && l.distance <= MAX_ALIGNMENT_DISTANCE)
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, 1)
 
   alignmentLines.value = [...horizontalLines, ...verticalLines]
 }
