@@ -648,6 +648,11 @@ const handleFileUpload = (event: Event) => {
                 : file.type.startsWith('video/') ? 'video'
                 : 'audio'
 
+    // 绘图节点只接受图片
+    if (props.type === 'ai-image' && type !== 'image') {
+      return
+    }
+
     uploadedAssets.value.push({
       id: `asset_${Date.now()}_${Math.random()}`,
       type,
