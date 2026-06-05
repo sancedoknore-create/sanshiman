@@ -179,10 +179,15 @@ onMounted(() => {
 
   // 键盘删除监听
   const handleKeyDown = (event: KeyboardEvent) => {
-    if (event.key === 'Delete' || event.key === 'Backspace') {
+    // 只允许Delete键删除节点，禁用Backspace
+    if (event.key === 'Delete') {
       // 检查是否在输入框中
       const target = event.target as HTMLElement
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+      if (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable ||
+          target.closest('[contenteditable="true"]') ||
+          target.closest('.generator-input')) {
         return
       }
 
