@@ -836,8 +836,8 @@ const statusText = computed(() => {
 
 .asset-thumbnail {
   position: relative;
-  width: 80px;
-  height: 80px;
+  width: 60px;
+  height: 60px;
   border-radius: 8px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.05);
