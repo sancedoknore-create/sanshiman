@@ -908,8 +908,8 @@ const statusText = computed(() => {
 }
 
 .asset-upload {
-  width: 80px;
-  height: 80px;
+  width: 60px;
+  height: 60px;
   border-radius: 8px;
   border: 2px dashed rgba(0, 217, 255, 0.3);
   display: flex;
@@ -926,14 +926,14 @@ const statusText = computed(() => {
 }
 
 .asset-upload .upload-icon {
-  font-size: 32px;
+  font-size: 24px;
   color: rgba(0, 217, 255, 0.5);
 }
 
 .upload-prompt {
   margin-bottom: 12px;
-  width: 80px;
-  height: 80px;
+  width: 60px;
+  height: 60px;
   border: 2px dashed rgba(0, 217, 255, 0.3);
   border-radius: 8px;
   display: flex;
@@ -963,7 +963,7 @@ const statusText = computed(() => {
 }
 
 .upload-prompt-btn .upload-icon {
-  font-size: 32px;
+  font-size: 24px;
 }
 
 /* @ 提及列表 */
