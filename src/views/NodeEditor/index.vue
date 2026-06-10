@@ -3,12 +3,13 @@
     <VueFlow
       v-model:nodes="nodes"
       v-model:edges="edges"
-      :default-viewport="{ zoom: 1, x: 0, y: 0 }"
+      :default-viewport="savedViewport || { zoom: 1, x: 0, y: 0 }"
       :min-zoom="0.1"
       :max-zoom="4"
       :snap-to-grid="true"
       :snap-grid="[15, 15]"
       :is-valid-connection="isValidConnection"
+      :default-edge-options="{ type: 'animated' }"
       @pane-context-menu="onPaneContextMenu"
       @node-context-menu="onNodeContextMenu"
       @node-click="onNodeClick"
@@ -21,17 +22,19 @@
       <MiniMap :pannable="true" :zoomable="true" />
     </VueFlow>
 
-    <!-- 对齐辅助线 -->
-    <div
-      v-for="line in alignmentLines"
-      :key="line.id"
-      class="alignment-line"
-      :class="line.type"
-      :style="{
-        left: line.type === 'vertical' ? line.position + 'px' : 0,
-        top: line.type === 'horizontal' ? line.position + 'px' : 0,
-      }"
-    ></div>
+    <!-- 对齐辅助线（跟随 vue-flow viewport 一起 transform） -->
+    <div class="alignment-overlay" :style="overlayStyle">
+      <div
+        v-for="line in alignmentLines"
+        :key="line.id"
+        class="alignment-line"
+        :class="line.type"
+        :style="{
+          left: line.type === 'vertical' ? line.position + 'px' : '-100000px',
+          top: line.type === 'horizontal' ? line.position + 'px' : '-100000px',
+        }"
+      ></div>
+    </div>
 
     <!-- 右键菜单 -->
     <ContextMenu
@@ -48,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, markRaw, onMounted, watch, onUnmounted } from 'vue'
+import { ref, reactive, markRaw, onMounted, watch, onUnmounted, computed, nextTick } from 'vue'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
@@ -86,7 +89,8 @@ const isValidConnection = (connection: any) => {
 const onNodeDrag = ({ node }: { node: Node }) => {
   const lines: Array<{ id: string; type: 'horizontal' | 'vertical'; position: number; distance: number }> = []
 
-  // 获取当前节点的边界
+  // 获取当前节点的边界（flow 坐标，辅助线 overlay 跟随 viewport transform，
+  // 所以 line.position 直接用 flow 坐标即可）
   const currentNode = node
   const currentLeft = currentNode.position.x
   const currentRight = currentNode.position.x + (currentNode.dimensions?.width || 0)
@@ -105,6 +109,16 @@ const onNodeDrag = ({ node }: { node: Node }) => {
     const otherBottom = otherNode.position.y + (otherNode.dimensions?.height || 0)
     const otherCenterX = otherLeft + (otherNode.dimensions?.width || 0) / 2
     const otherCenterY = otherTop + (otherNode.dimensions?.height || 0) / 2
+
+    // 两节点中心欧式距离，超过"最大节点尺寸 × 2"就不再提示对齐
+    const dx = currentCenterX - otherCenterX
+    const dy = currentCenterY - otherCenterY
+    const w1 = currentNode.dimensions?.width || 350
+    const h1 = currentNode.dimensions?.height || 350
+    const w2 = otherNode.dimensions?.width || 350
+    const h2 = otherNode.dimensions?.height || 350
+    const nearRadius = Math.max(w1, h1, w2, h2) * 2
+    if (Math.sqrt(dx * dx + dy * dy) > nearRadius) return
 
     // 检测垂直对齐（左边、右边、中心）
     const leftDist = Math.abs(currentLeft - otherLeft)
@@ -159,20 +173,31 @@ const onNodeDrag = ({ node }: { node: Node }) => {
   alignmentLines.value = [...horizontalLines, ...verticalLines]
 }
 
-// 拖动结束清除辅助线
-const onNodeDragStop = () => {
+// 拖动结束清除辅助线 + 把拖完的位置同步回 store
+// （vue-flow 的 v-model:nodes 不会自动 emit 位置变化，必须在 drag-stop 里手动写回，
+// 否则切 tab 重挂载就丢位置）
+const onNodeDragStop = ({ nodes: draggedNodes }: { nodes?: Node[] } = {}) => {
   alignmentLines.value = []
+  const list = draggedNodes && draggedNodes.length ? draggedNodes : nodes.value
+  list.forEach((n) => {
+    const storeNode = nodeStore.nodes.find((s) => s.id === n.id)
+    if (storeNode) {
+      storeNode.position = { x: n.position.x, y: n.position.y }
+    }
+  })
 }
+
+// 保存/恢复画布视角位置（切页面再回来保持原位）
+let savedViewport: { x: number; y: number; zoom: number } | null = null
 
 // 使用本地ref来绑定Vue Flow
 const nodes = ref<Node[]>([])
 const edges = ref<Edge[]>([])
 
-const { project, onConnect, setNodes, setEdges } = useVueFlow({
+const { project, onConnect, setNodes, setEdges, viewport } = useVueFlow({
   nodeTypes: {
     'ai-image': markRaw(CustomNode),
     'ai-video': markRaw(CustomNode),
-    '3d-scene': markRaw(CustomNode),
     'asset-ref': markRaw(CustomNode),
     'post-process': markRaw(CustomNode),
   },
@@ -181,9 +206,27 @@ const { project, onConnect, setNodes, setEdges } = useVueFlow({
   },
 })
 
+// overlay 跟着 vue-flow viewport 一起 transform，让 alignment-line 用 flow 坐标即可
+const overlayStyle = computed(() => {
+  const vp = viewport.value
+  return {
+    position: 'absolute' as const,
+    top: '0',
+    left: '0',
+    width: '100%',
+    height: '100%',
+    pointerEvents: 'none' as const,
+    transformOrigin: '0 0',
+    transform: `translate(${vp.x}px, ${vp.y}px) scale(${vp.zoom})`,
+    zIndex: 1000,
+  }
+})
+
 // 同步nodeStore到本地nodes
+// 使用 [...newNodes] 创建新数组引用，确保 Vue Flow 的 v-model 检测到变化
+// 否则 store 内部修改 node.data 时数组引用不变，VueFlow 不会重渲染 CustomNode
 watch(() => nodeStore.nodes, (newNodes) => {
-  nodes.value = newNodes
+  nodes.value = [...newNodes]
 }, { deep: true, immediate: true })
 
 watch(() => nodeStore.edges, (newEdges) => {
@@ -237,7 +280,6 @@ onConnectEnd((event) => {
       contextMenu.items = [
         { label: '添加AI绘图节点', icon: '🎨', action: 'add-ai-image' },
         { label: '添加AI视频节点', icon: '🎬', action: 'add-ai-video' },
-        { label: '添加3D导演台节点', icon: '🎭', action: 'add-3d-scene' },
         { label: '添加资产引用节点', icon: '📦', action: 'add-asset-ref' },
         { label: '添加后处理节点', icon: '⚡', action: 'add-post-process' },
       ]
@@ -252,15 +294,18 @@ onConnectEnd((event) => {
 })
 
 // 初始化示例节点
-onMounted(() => {
-  // 检查是否有新建项目请求
+onMounted(async () => {
+  // 检查是否有新建项目请求 / 打开项目请求
   const route = useRoute()
   const router = useRouter()
 
   if (route.query.newProject === 'true') {
-    // 清空所有数据
-    nodeStore.nodes.splice(0, nodeStore.nodes.length)
-    nodeStore.edges.splice(0, nodeStore.edges.length)
+    // 新建项目：必须带 projectId，否则用一个默认 ID 兜底
+    const projectId =
+      (typeof route.query.projectId === 'string' && route.query.projectId)
+      || `project_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+    await nodeStore.createProject(projectId)
     nodes.value = []
     edges.value = []
     setNodes([])
@@ -278,7 +323,14 @@ onMounted(() => {
     return
   }
 
-  // 默认初始化示例节点
+  if (typeof route.query.project === 'string' && route.query.project) {
+    // 打开已有项目：从盘上加载该项目的画布
+    await nodeStore.loadProject(route.query.project)
+    router.replace({ path: '/nodes' })
+    return
+  }
+
+  // 默认初始化示例节点（仅当当前项目完全空时）
   if (nodeStore.nodes.length === 0) {
     const node1: Node = {
       id: '1',
@@ -343,8 +395,11 @@ onMounted(() => {
 
   window.addEventListener('keydown', handleKeyDown)
 
+  // 视角位置已通过 :default-viewport 恢复，无需额外操作
+
   // 清理
   onUnmounted(() => {
+    savedViewport = { x: viewport.value.x, y: viewport.value.y, zoom: viewport.value.zoom }
     window.removeEventListener('keydown', handleKeyDown)
   })
 })
@@ -375,7 +430,6 @@ const onPaneContextMenu = (event: MouseEvent) => {
   contextMenu.items = [
     { label: '添加AI绘图节点', icon: '🎨', action: 'add-ai-image' },
     { label: '添加AI视频节点', icon: '🎬', action: 'add-ai-video' },
-    { label: '添加3D导演台节点', icon: '🎭', action: 'add-3d-scene' },
     { label: '添加资产引用节点', icon: '📦', action: 'add-asset-ref' },
     { label: '添加后处理节点', icon: '⚡', action: 'add-post-process' },
     { label: '上传素材', icon: '📤', action: 'upload-asset' },
@@ -423,7 +477,7 @@ const onContextMenuSelect = (action: string) => {
   contextMenu.visible = false
 }
 
-// 处理上传素材
+// 处理上传素材（通过右键菜单）
 const handleUploadAsset = () => {
   const input = document.createElement('input')
   input.type = 'file'
@@ -435,18 +489,31 @@ const handleUploadAsset = () => {
     if (!files || files.length === 0) return
 
     for (const file of Array.from(files)) {
-      // 创建预览URL
-      const url = URL.createObjectURL(file)
-
       // 判断文件类型
       let type: 'image' | 'video' | 'audio' = 'image'
-      if (file.type.startsWith('video/')) {
-        type = 'video'
-      } else if (file.type.startsWith('audio/')) {
-        type = 'audio'
+      if (file.type.startsWith('video/')) type = 'video'
+      else if (file.type.startsWith('audio/')) type = 'audio'
+
+      // 先读成 data URL 确保即时显示，同时落盘持久化
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.readAsDataURL(file)
+      })
+
+      let assetUrl: string = dataUrl
+      // 落盘：data URL → 磁盘文件 → local-upload:/// URL，重启不丢
+      const base64 = dataUrl.includes('base64,') ? dataUrl.split('base64,')[1] : dataUrl
+      if (window.electronAPI?.upload?.save) {
+        try {
+          const savedPath = await window.electronAPI.upload.save(base64, file.name)
+          if (savedPath) {
+            // C:\...\file.png → local-upload:///C:/.../file.png
+            assetUrl = 'local-upload:///' + savedPath.replace(/\\/g, '/')
+          }
+        } catch { /* 落盘失败回退 data URL */ }
       }
 
-      // 创建素材节点
       const position = project({
         x: contextMenu.data?.clientX || window.innerWidth / 2,
         y: contextMenu.data?.clientY || window.innerHeight / 2,
@@ -459,7 +526,7 @@ const handleUploadAsset = () => {
         data: {
           label: file.name,
           assetType: type,
-          assetUrl: url,
+          assetUrl,
           assetName: file.name,
         },
       }
@@ -490,8 +557,6 @@ const addNodeByType = (type: string) => {
       mode: 'text-to-video',
       duration: 5,
       fps: 24,
-      sceneTemplate: 'outdoor-street',
-      lighting: 'three-point',
     },
   }
 
@@ -575,7 +640,6 @@ const getNodeLabel = (type: string): string => {
   const labels: Record<string, string> = {
     'ai-image': 'AI绘图',
     'ai-video': 'AI视频',
-    '3d-scene': '3D场景',
     'asset-ref': '资产引用',
     'post-process': '后处理',
   }
@@ -596,24 +660,28 @@ const getNodeLabel = (type: string): string => {
   height: 100%;
 }
 
+/* 对齐辅助线 overlay：跟随 vue-flow viewport 一起 transform */
+.alignment-overlay {
+  /* 内联 style 已设 position/transform/zIndex，这里只兜底 */
+}
+
 /* 对齐辅助线 */
 .alignment-line {
   position: absolute;
   pointer-events: none;
-  z-index: 1000;
 }
 
 .alignment-line.horizontal {
-  width: 100%;
-  height: 1px;
-  left: 0;
+  width: 200000px;
+  height: 0;
+  left: -100000px;
   border-top: 1px dashed rgba(0, 217, 255, 0.8);
 }
 
 .alignment-line.vertical {
-  width: 1px;
-  height: 100%;
-  top: 0;
+  width: 0;
+  height: 200000px;
+  top: -100000px;
   border-left: 1px dashed rgba(0, 217, 255, 0.8);
 }
 

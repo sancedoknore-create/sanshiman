@@ -1,7 +1,7 @@
 <template>
-  <svg>
+  <g>
     <defs>
-      <linearGradient id="edge-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <linearGradient :id="`edge-gradient-${id}`" x1="0%" y1="0%" x2="100%" y2="0%">
         <stop offset="0%" style="stop-color:#00D9FF;stop-opacity:1" />
         <stop offset="100%" style="stop-color:#B432FF;stop-opacity:1" />
       </linearGradient>
@@ -29,7 +29,7 @@
         :begin="`${i * 0.3}s`"
       />
     </circle>
-  </svg>
+  </g>
 </template>
 
 <script setup lang="ts">

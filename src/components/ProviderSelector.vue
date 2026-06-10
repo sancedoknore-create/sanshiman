@@ -1,33 +1,36 @@
 <template>
-  <div class="model-selector" ref="selectorRef">
-    <button class="model-btn" @click.stop="toggle">
-      <span class="model-icon">🤖</span>
-      <span class="model-text">{{ selectedModel?.name || '选择模型' }}</span>
+  <div class="provider-selector" ref="selectorRef">
+    <button class="provider-btn" @click.stop="toggle">
+      <span class="provider-icon">🛰</span>
+      <span class="provider-text">{{ selected?.name || '选择中转站' }}</span>
       <svg class="chevron" :class="{ open: isOpen }" width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
         <path d="M6.19819 0.117182C6.3544 -0.039028 6.60839 -0.039028 6.7646 0.117182L7.18843 0.54101C7.34464 0.69722 7.34464 0.951206 7.18843 1.10742L4.14741 4.14843C3.87403 4.42145 3.43043 4.42165 3.15718 4.14843L0.117137 1.10742C-0.039034 0.9512 -0.039057 0.697203 0.117137 0.54101L0.540965 0.117182C0.697193 -0.0390471 0.951169 -0.039074 1.10737 0.117182L3.65229 2.66308L6.19819 0.117182Z"/>
       </svg>
     </button>
 
     <transition name="dropdown">
-      <div v-if="isOpen" class="model-dropdown">
+      <div v-if="isOpen" class="provider-dropdown">
         <div class="dropdown-section">
-          <div class="section-title">{{ label }}</div>
-          <div v-if="modelList.length === 0" class="empty-tip">
-            该中转站还没添加模型
+          <div class="section-title">中转站</div>
+          <div v-if="!providers || providers.length === 0" class="empty-tip">
+            还没有中转站，请到「设置」添加
           </div>
-          <div v-else class="model-list">
+          <div v-else class="provider-list">
             <button
-              v-for="model in modelList"
-              :key="model.id"
-              class="model-option"
-              :class="{ active: modelValue === model.id }"
-              @click.stop="selectModel(model)"
+              v-for="p in providers"
+              :key="p.id"
+              class="provider-option"
+              :class="{ active: modelValue === p.id }"
+              @click.stop="selectProvider(p.id)"
             >
-              <div class="model-info">
-                <div class="model-name">{{ model.name || model.id }}</div>
-                <div v-if="model.description" class="model-desc">{{ model.description }}</div>
+              <div class="provider-meta">
+                <div class="provider-name-line">
+                  <span class="star" v-if="p.isDefault">⭐</span>
+                  {{ p.name || '未命名中转站' }}
+                </div>
+                <div class="provider-host">{{ p.baseUrl }}</div>
               </div>
-              <span v-if="model.badge" class="model-badge">{{ model.badge }}</span>
+              <span class="status-dot" :class="p.status"></span>
             </button>
           </div>
         </div>
@@ -39,23 +42,22 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, inject, watch } from 'vue'
 
-interface VideoModel {
+interface ProviderSummary {
   id: string
-  name?: string
-  description?: string
-  badge?: string
+  name: string
+  baseUrl: string
+  status?: 'connected' | 'error' | 'unconfigured' | 'disconnected'
+  isDefault?: boolean
 }
 
 interface Props {
   modelValue?: string
-  models?: VideoModel[]
-  label?: string
+  providers?: ProviderSummary[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: '',
-  models: () => [],
-  label: '模型',
+  providers: () => [],
 })
 
 const emit = defineEmits<{
@@ -64,27 +66,18 @@ const emit = defineEmits<{
 
 const isOpen = ref(false)
 const selectorRef = ref<HTMLElement>()
+const SELECTOR_ID = 'provider-selector'
 
-const SELECTOR_ID = 'model-selector'
-
-// 注入父组件提供的控制器
 const openSelector = inject<any>('openSelector', ref(null))
 const requestOpen = inject<any>('requestOpen', () => {})
 
-// 监听全局打开状态
 watch(openSelector, (currentOpen) => {
-  if (currentOpen !== SELECTOR_ID) {
-    isOpen.value = false
-  }
+  if (currentOpen !== SELECTOR_ID) isOpen.value = false
 })
 
-// 父组件传入模型列表，不再内置假模型兜底（旧 defaultModels 已删除，
-// 避免删完中转站模型后 UI 还显示 runway/pika 等错误项）
-const modelList = computed(() => props.models)
-
-const selectedModel = computed(() => {
-  return modelList.value.find(m => m.id === props.modelValue)
-})
+const selected = computed(() =>
+  props.providers.find((p) => p.id === props.modelValue)
+)
 
 function toggle() {
   if (isOpen.value) {
@@ -96,9 +89,10 @@ function toggle() {
   }
 }
 
-function selectModel(model: VideoModel) {
-  emit('update:modelValue', model.id)
+function selectProvider(id: string) {
+  emit('update:modelValue', id)
   isOpen.value = false
+  requestOpen(null)
 }
 
 function handleClickOutside(event: MouseEvent) {
@@ -117,11 +111,11 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.model-selector {
+.provider-selector {
   position: relative;
 }
 
-.model-btn {
+.provider-btn {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -133,18 +127,18 @@ onUnmounted(() => {
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
-  min-width: 120px;
+  min-width: 110px;
 }
 
-.model-btn:hover {
+.provider-btn:hover {
   background: rgba(255, 255, 255, 0.05);
 }
 
-.model-icon {
-  font-size: 16px;
+.provider-icon {
+  font-size: 14px;
 }
 
-.model-text {
+.provider-text {
   flex: 1;
   text-align: left;
   white-space: nowrap;
@@ -157,16 +151,15 @@ onUnmounted(() => {
   transition: transform 0.2s;
   flex-shrink: 0;
 }
-
 .chevron.open {
   transform: rotate(180deg);
 }
 
-.model-dropdown {
+.provider-dropdown {
   position: absolute;
   bottom: calc(100% + 8px);
   left: 0;
-  min-width: 320px;
+  min-width: 280px;
   background: #262626;
   border: 1px solid rgba(0, 217, 255, 0.3);
   border-radius: 12px;
@@ -176,21 +169,11 @@ onUnmounted(() => {
   user-select: none;
 }
 
-.dropdown-section {
-  margin-bottom: 0;
-}
-
 .section-title {
   font-size: 12px;
   color: #888;
   margin-bottom: 8px;
   padding-left: 4px;
-}
-
-.model-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 }
 
 .empty-tip {
@@ -201,7 +184,13 @@ onUnmounted(() => {
   font-style: italic;
 }
 
-.model-option {
+.provider-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.provider-option {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -211,59 +200,69 @@ onUnmounted(() => {
   border: 1px solid transparent;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
   text-align: left;
+  transition: all 0.2s;
 }
 
-.model-option:hover {
+.provider-option:hover {
   background: rgba(255, 255, 255, 0.05);
   border-color: rgba(0, 217, 255, 0.3);
 }
 
-.model-option.active {
+.provider-option.active {
   background: rgba(0, 217, 255, 0.1);
   border-color: #00D9FF;
 }
 
-.model-info {
+.provider-meta {
   flex: 1;
   min-width: 0;
 }
 
-.model-name {
+.provider-name-line {
   font-size: 13px;
   color: #ffffff;
   font-weight: 500;
   margin-bottom: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.model-desc {
+.star {
+  color: #FFD166;
+  font-size: 11px;
+}
+
+.provider-host {
   font-size: 11px;
   color: #888;
+  font-family: monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.model-badge {
-  padding: 2px 8px;
-  background: rgba(180, 50, 255, 0.2);
-  border: 1px solid #B432FF;
-  border-radius: 4px;
-  color: #B432FF;
-  font-size: 10px;
-  font-weight: 600;
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   flex-shrink: 0;
+  background: #666;
 }
+.status-dot.connected { background: #00ff88; box-shadow: 0 0 6px #00ff88; }
+.status-dot.error { background: #ff4444; box-shadow: 0 0 6px #ff4444; }
+.status-dot.unconfigured { background: #666; }
+.status-dot.disconnected { background: #ffcc00; }
 
-/* 下拉动画 - 向上弹出 */
 .dropdown-enter-active,
 .dropdown-leave-active {
   transition: all 0.2s ease;
 }
-
 .dropdown-enter-from {
   opacity: 0;
   transform: translateY(10px);
 }
-
 .dropdown-leave-to {
   opacity: 0;
   transform: translateY(10px);

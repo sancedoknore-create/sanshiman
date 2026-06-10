@@ -16,3 +16,4 @@ lerna-debug.log*
 # Electron
 out
 release
+temp_*

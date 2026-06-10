@@ -9,7 +9,7 @@
     </button>
 
     <transition name="dropdown">
-      <div v-if="isOpen" class="ratio-dropdown">
+      <div v-if="isOpen" class="ratio-dropdown nodrag nowheel">
         <div class="dropdown-section">
           <div class="section-title">比例</div>
           <div class="ratio-grid">
@@ -40,6 +40,28 @@
             >
               {{ res }}
             </button>
+          </div>
+        </div>
+
+        <div v-if="durationRange" class="dropdown-section">
+          <div class="duration-header">
+            <span class="section-title">时长</span>
+            <span class="duration-value">{{ selectedDuration }}秒</span>
+          </div>
+          <div class="duration-slider">
+            <input
+              type="range"
+              class="slider"
+              :min="durationRange.min"
+              :max="durationRange.max"
+              step="1"
+              v-model.number="selectedDuration"
+              @click.stop
+            />
+            <div class="slider-labels">
+              <span>{{ durationRange.min }}秒</span>
+              <span>{{ durationRange.max }}秒</span>
+            </div>
           </div>
         </div>
 
@@ -85,12 +107,20 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
+  'update:resolution': [value: string]
+  'update:duration': [value: number]
+  'update:audio': [value: boolean]
 }>()
 
 const isOpen = ref(false)
 const selectorRef = ref<HTMLElement>()
-const selectedResolution = ref('2K')
+const selectedResolution = ref('')
+const selectedDuration = ref(5)
 const enableAudio = ref(false) // 音频开关
+
+watch(selectedResolution, (val) => emit('update:resolution', val))
+watch(selectedDuration, (val) => emit('update:duration', val))
+watch(enableAudio, (val) => emit('update:audio', val))
 
 const SELECTOR_ID = 'ratio-selector'
 
@@ -115,6 +145,8 @@ const ratioOptions: RatioOption[] = [
   { label: '3:4', value: '3:4', aspect: '3/4', icon: '▯' },
 ]
 
+const resolutions = ['1K', '2K', '4K', '480p', '720p', '1080p']
+
 // 根据模型能力过滤可用的比例
 const availableRatios = computed(() => {
   if (!props.capabilities?.ratios) {
@@ -131,10 +163,26 @@ const availableResolutions = computed(() => {
   return resolutions.filter(res => props.capabilities!.resolutions!.includes(res))
 })
 
-// 根据模型能力决定是否显示音频开关
-const audioAvailable = computed(() => props.capabilities?.audioGeneration ?? true)
+// 时长范围（仅视频节点有）
+const durationRange = computed(() => props.capabilities?.durationRange)
 
-const resolutions = ['1K', '2K', '4K']
+// 当前清晰度不在可用列表里时，重置为中间值（默认 720p 这一档）
+watch(availableResolutions, (list) => {
+  if (list.length === 0) return
+  if (!list.includes(selectedResolution.value)) {
+    selectedResolution.value = list[Math.floor(list.length / 2)] || list[0]
+  }
+}, { immediate: true })
+
+// 时长越界时夹紧到模型支持范围内
+watch(durationRange, (range) => {
+  if (!range) return
+  if (selectedDuration.value < range.min) selectedDuration.value = range.min
+  if (selectedDuration.value > range.max) selectedDuration.value = range.max
+}, { immediate: true })
+
+// 根据模型能力决定是否显示音频开关：未声明视为不支持（图片模型默认隐藏）
+const audioAvailable = computed(() => props.capabilities?.audioGeneration === true)
 
 const selectedOption = computed(() => {
   return availableRatios.value.find(opt => opt.value === props.modelValue) || availableRatios.value[0]
@@ -192,7 +240,7 @@ onUnmounted(() => {
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
-  min-width: 200px;
+  min-width: 130px;
 }
 
 .ratio-btn:hover {
@@ -335,6 +383,25 @@ onUnmounted(() => {
 
 .duration-slider {
   padding: 0 4px;
+}
+
+.duration-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-left: 4px;
+}
+
+.duration-header .section-title {
+  margin-bottom: 0;
+  padding-left: 0;
+}
+
+.duration-value {
+  font-size: 12px;
+  color: #00D9FF;
+  font-weight: 500;
 }
 
 .slider {

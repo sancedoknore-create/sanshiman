@@ -17,8 +17,13 @@
 
         <!-- AI绘图节点 -->
         <template v-else-if="type === 'ai-image'">
+          <!-- 错误态 - 显示报错信息 -->
+          <div v-if="data.status === 'error' && data.error" class="error-display">
+            <div class="error-icon">⚠</div>
+            <div class="error-text">{{ data.error }}</div>
+          </div>
           <!-- 生成中 - 显示进度 -->
-          <div v-if="data.status === 'running'" class="progress-display">
+          <div v-else-if="data.status === 'running'" class="progress-display">
             <div class="progress-number">{{ data.progress || 0 }}%</div>
             <div class="progress-text">生成中...</div>
           </div>
@@ -42,8 +47,13 @@
 
         <!-- AI视频节点 -->
         <template v-else-if="type === 'ai-video'">
+          <!-- 错误态 - 显示报错信息 -->
+          <div v-if="data.status === 'error' && data.error" class="error-display">
+            <div class="error-icon">⚠</div>
+            <div class="error-text">{{ data.error }}</div>
+          </div>
           <!-- 生成中 - 显示进度 -->
-          <div v-if="data.status === 'running'" class="progress-display">
+          <div v-else-if="data.status === 'running'" class="progress-display">
             <div class="progress-number">{{ data.progress || 0 }}%</div>
             <div class="progress-text">生成中...</div>
           </div>
@@ -86,8 +96,31 @@
 
     <!-- 生成卡片 - 选中时在底部展开 -->
     <transition name="expand">
-      <div v-if="isSelected" class="generator-card">
+      <div v-show="isSelected" class="generator-card">
         <div class="generator-content">
+          <!-- 历史缩略图条（图片/视频节点才显示，且有历史时才显示） -->
+          <div v-if="nodeHistory.length > 0" class="history-strip">
+            <div class="history-label">历史 ({{ nodeHistory.length }})</div>
+            <div class="history-scroller">
+              <div
+                v-for="asset in nodeHistory"
+                :key="asset.id"
+                class="history-thumb"
+                :class="{ active: asset.url === currentOutputUrl }"
+                :title="asset.prompt"
+                @click.stop="switchToHistoryAsset(asset)"
+              >
+                <img v-if="asset.type === 'image'" :src="asset.url" class="history-thumb-media" />
+                <video v-else :src="asset.url" class="history-thumb-media" preload="metadata" muted />
+                <button
+                  class="history-thumb-delete"
+                  title="从历史中删除"
+                  @click.stop="deleteHistoryAsset(asset.id)"
+                ><svg viewBox="0 0 16 16" width="8" height="8" stroke="currentColor" stroke-width="3" fill="none"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg></button>
+              </div>
+            </div>
+          </div>
+
           <!-- 视频节点选项卡 -->
           <div v-if="type === 'ai-video'" class="generator-tabs">
             <button
@@ -108,7 +141,7 @@
               <div v-if="asset.type === 'image'" class="asset-thumbnail">
                 <img :src="asset.url" :alt="asset.name" />
                 <div v-if="asset.fromNode" class="node-badge">节点</div>
-                <button class="asset-remove" @click.stop="asset.fromNode ? removeConnectedAsset(asset.id) : removeAsset(asset.id)">×</button>
+                <button class="asset-remove" @click.stop="asset.fromNode ? removeConnectedAsset(asset.id) : removeAsset(asset.id)"><svg viewBox="0 0 16 16" width="10" height="10" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg></button>
               </div>
 
               <!-- 视频缩略图 -->
@@ -120,7 +153,7 @@
                   </svg>
                 </div>
                 <div v-if="asset.fromNode" class="node-badge">节点</div>
-                <button class="asset-remove" @click.stop="asset.fromNode ? removeConnectedAsset(asset.id) : removeAsset(asset.id)">×</button>
+                <button class="asset-remove" @click.stop="asset.fromNode ? removeConnectedAsset(asset.id) : removeAsset(asset.id)"><svg viewBox="0 0 16 16" width="10" height="10" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg></button>
               </div>
 
               <!-- 音频缩略图 -->
@@ -129,7 +162,7 @@
                   <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
                 </svg>
                 <div v-if="asset.fromNode" class="node-badge">节点</div>
-                <button class="asset-remove" @click.stop="asset.fromNode ? removeConnectedAsset(asset.id) : removeAsset(asset.id)">×</button>
+                <button class="asset-remove" @click.stop="asset.fromNode ? removeConnectedAsset(asset.id) : removeAsset(asset.id)"><svg viewBox="0 0 16 16" width="10" height="10" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg></button>
               </div>
             </div>
 
@@ -202,17 +235,24 @@
 
           <div class="generator-footer">
             <div class="generator-options">
-              <!-- 视频节点：模型选择器 + 比例选择器 -->
+              <!-- 视频节点：中转站 + 模型 + 比例选择器 -->
               <template v-if="type === 'ai-video'">
-                <ModelSelector v-model="selectedModel" :models="availableModels" />
-                <RatioSelector v-model="selectedRatio" :capabilities="currentModelCapabilities" />
+                <ProviderSelector v-model="selectedProviderId" :providers="providerOptions" />
+                <ModelSelector v-model="selectedModel" :models="availableModels" label="视频模型" />
+                <RatioSelector
+                  v-model="selectedRatio"
+                  :capabilities="currentModelCapabilities"
+                  @update:resolution="onResolutionChange"
+                  @update:duration="onDurationChange"
+                  @update:audio="onAudioChange"
+                />
               </template>
 
-              <!-- 图片节点：模型 + 比例 + 风格选择器 -->
+              <!-- 图片节点：中转站 + 模型 + 比例 -->
               <template v-else-if="type === 'ai-image'">
-                <ModelSelector v-model="selectedModel" :models="availableImageModels" />
-                <RatioSelector v-model="selectedRatio" :capabilities="imageRatioCapabilities" />
-                <StyleSelector v-model="selectedStyle" />
+                <ProviderSelector v-model="selectedProviderId" :providers="imageProviderOptions" />
+                <ModelSelector v-model="selectedModel" :models="availableImageModels" label="图片模型" />
+                <RatioSelector v-model="selectedRatio" :capabilities="currentModelCapabilities" />
               </template>
 
               <!-- 其他节点：简单按钮 -->
@@ -252,7 +292,10 @@
     <Teleport to="body">
       <div v-if="showVideoModal" class="video-modal-overlay" @click="closeVideo">
         <div class="video-modal-content" @click.stop>
-          <button class="video-modal-close" @click="closeVideo">×</button>
+          <div class="modal-toolbar">
+            <button class="modal-download" @click="downloadAsset(data.outputVideo, 'video')">⬇ 下载</button>
+            <button class="video-modal-close" @click="closeVideo"><svg viewBox="0 0 16 16" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg></button>
+          </div>
           <video
             ref="videoPlayerRef"
             :src="data.outputVideo"
@@ -268,7 +311,10 @@
     <Teleport to="body">
       <div v-if="showImageModal" class="image-modal-overlay" @click="closeImage">
         <div class="image-modal-content" @click.stop>
-          <button class="image-modal-close" @click="closeImage">×</button>
+          <div class="modal-toolbar">
+            <button class="modal-download" @click="downloadAsset(data.outputImage, 'image')">⬇ 下载</button>
+            <button class="image-modal-close" @click="closeImage"><svg viewBox="0 0 16 16" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg></button>
+          </div>
           <img
             :src="data.outputImage"
             class="image-modal-preview"
@@ -330,11 +376,12 @@
 import { ref, computed, watch, provide, onMounted, nextTick } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
 import { useNodeStore } from '@/stores/node'
+import { useAIStore } from '@/stores/ai'
+import { useAssetStore, type GeneratedAsset } from '@/stores/asset'
 import RatioSelector from './RatioSelector.vue'
 import ModelSelector from './ModelSelector.vue'
-import StyleSelector from './StyleSelector.vue'
-import { getVideoModels, type VideoModel } from '@/services/videoModelService'
-import { getImageModels, type ImageModel } from '@/services/imageModelService'
+import ProviderSelector from './ProviderSelector.vue'
+import type { VideoModelCapabilities } from '@/services/videoModelService'
 
 interface Props {
   id: string
@@ -349,22 +396,84 @@ interface Props {
 
 const props = defineProps<Props>()
 const nodeStore = useNodeStore()
+const aiStore = useAIStore()
+const assetStore = useAssetStore()
 
 const localPrompt = ref(props.data.prompt || '')
 const isSelected = computed(() => nodeStore.selectedNodeId === props.id)
 const currentTab = ref('text-to-video')
 const selectedRatio = ref('16:9')
-const selectedModel = ref(props.type === 'ai-image' ? 'dall-e-3' : 'seedance-2.0')
+// 视频/图片节点共用：先取节点 data 里的 providerId，否则按类型用全局默认
+const selectedProviderId = ref<string>(
+  (props.data as any).providerId
+  || (props.type === 'ai-image' ? aiStore.defaultImageProviderId : aiStore.defaultProviderId)
+  || ''
+)
+// 模型 ID 从节点 data.model 或所选中转站的第一个模型推导
+const selectedModel = ref<string>((props.data as any).model || '')
 const selectedStyle = ref('realistic')
+void selectedStyle
 
-// 图片节点的比例能力（不限制时长和音频）
-const imageRatioCapabilities = {
-  ratios: ['1:1', '16:9', '9:16', '4:3', '3:4', '21:9', '3:2', '2:3'],
-  resolutions: ['1K', '2K', '4K'],
-  audioGeneration: false,
-}
-const availableModels = ref<VideoModel[]>([])
-const availableImageModels = ref<ImageModel[]>([])
+// 视频节点的模型列表跟随当前选中的中转站
+const availableModels = computed(() => {
+  const config = aiStore.getProviderConfig(selectedProviderId.value)
+  return config?.models ?? []
+})
+// 图片节点的模型列表跟随选中的图片中转站
+const availableImageModels = computed(() => {
+  const config = aiStore.getProviderConfig(selectedProviderId.value)
+  return config?.models ?? []
+})
+// 视频中转站下拉用
+const providerOptions = computed(() =>
+  aiStore.videoProviders.map((p) => ({
+    id: p.id,
+    name: p.name,
+    baseUrl: p.baseUrl,
+    status: p.status,
+    isDefault: p.id === aiStore.defaultProviderId,
+  }))
+)
+// 图片中转站下拉用
+const imageProviderOptions = computed(() =>
+  aiStore.imageProviders.map((p) => ({
+    id: p.id,
+    name: p.name,
+    baseUrl: p.baseUrl,
+    status: p.status,
+    isDefault: p.id === aiStore.defaultImageProviderId,
+  }))
+)
+// 切中转站时，若新中转站没有当前模型，自动选第一个
+watch(selectedProviderId, (newId) => {
+  const models = aiStore.getProviderConfig(newId)?.models ?? []
+  if (!models.find((m) => m.id === selectedModel.value)) {
+    selectedModel.value = models[0]?.id ?? ''
+  }
+  // 把中转站的选择同步回 store，避免切节点后丢失
+  nodeStore.updateNodeData(props.id, { providerId: newId, model: selectedModel.value })
+})
+
+// 模型 / 比例的变化也立刻同步回 store（之前只有点生成按钮时才写回，
+// 切节点 → 切回来就丢了用户的选择）
+watch(selectedModel, (newModel) => {
+  nodeStore.updateNodeData(props.id, { model: newModel })
+})
+watch(selectedRatio, (newRatio) => {
+  nodeStore.updateNodeData(props.id, { ratio: newRatio })
+})
+// store 里的中转站若被外部修改（删/改），保险兜底
+watch(
+  () => aiStore.providers.map((p) => p.id).join(','),
+  () => {
+    if (!aiStore.getProviderConfig(selectedProviderId.value)) {
+      selectedProviderId.value =
+        (props.type === 'ai-image' ? aiStore.defaultImageProviderId : aiStore.defaultProviderId)
+        || ''
+    }
+  }
+)
+// 旧的 ai-image 模型列表已迁移到 store，这里不再保留独立 ref
 const uploadedAssets = ref<Array<{ id: string; type: 'image' | 'video' | 'audio'; url: string; name: string }>>([])
 
 // @ 提及功能
@@ -398,6 +507,8 @@ const handleContentEdit = (event: Event) => {
 
   // 获取纯文本内容（用于保存）
   localPrompt.value = extractTextContent(div)
+  // 立刻写回 store，否则切换节点时 vue-flow 重建 DOM 会丢失未保存的文本
+  updatePrompt()
 
   // 检测@触发
   checkForMention(div)
@@ -540,14 +651,56 @@ const filteredAssets = computed(() => {
   )
 })
 
+// 将存储格式 @[name](id) 还原为徽章 HTML
+function promptTextToHtml(text: string): string {
+  if (!text) return ''
+  return text.replace(
+    /@\[([^\]]+)\]\(([^)]+)\)/g,
+    (_match, name, assetId) => {
+      const asset = allAssets.value.find(a => a.id === assetId)
+      if (!asset) return _match
+      let thumbnail = ''
+      if (asset.type === 'image') {
+        thumbnail = `<img src="${asset.url.replace(/"/g, '&quot;')}" class="badge-thumbnail" />`
+      } else if (asset.type === 'video') {
+        thumbnail = `<svg class="badge-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4.66699 2.64248C4.66717 1.82358 5.59736 1.35167 6.25781 1.83584L13.5674 7.19619C14.1117 7.59579 14.1118 8.40897 13.5674 8.8085L6.25781 14.1688C5.59734 14.6528 4.6671 14.1811 4.66699 13.3622V2.64248Z"/></svg>`
+      } else {
+        thumbnail = `<svg class="badge-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>`
+      }
+      return `<span class="asset-badge" contenteditable="false" data-asset-id="${assetId}" data-asset-name="${name}">${thumbnail}<span class="badge-name">${name}</span></span>`
+    }
+  )
+}
+
 // 初始化
 onMounted(async () => {
   if (editableRef.value && localPrompt.value) {
-    editableRef.value.textContent = localPrompt.value
+    editableRef.value.innerHTML = promptTextToHtml(localPrompt.value)
   }
-  availableModels.value = getVideoModels()
-  availableImageModels.value = await getImageModels()
+  // 从持久化数据恢复本地上传的素材（文件路径 → file:/// URL）
+  const saved = (props.data as any)._uploads as Array<{ id: string; type: 'image' | 'video' | 'audio'; url: string; name: string }> | undefined
+  if (saved?.length) {
+    uploadedAssets.value = saved.map(a => ({
+      ...a,
+      url: filePathToUrl(a.url), // 存的是磁盘路径，转 file:/// URL 才能显示
+    }))
+  }
+  // 节点装载后兜底：providerId 不在 store 中就用默认；模型不在中转站里就用第一个
+  const isImage = props.type === 'ai-image'
+  const isVideo = props.type === 'ai-video'
+  if (isImage || isVideo) {
+    if (!aiStore.getProviderConfig(selectedProviderId.value)) {
+      selectedProviderId.value =
+        (isImage ? aiStore.defaultImageProviderId : aiStore.defaultProviderId) || ''
+    }
+    const models = aiStore.getProviderConfig(selectedProviderId.value)?.models ?? []
+    if (!models.find((m) => m.id === selectedModel.value)) {
+      selectedModel.value = models[0]?.id ?? ''
+    }
+  }
 })
+
+// （原 ai-image 加载逻辑已合并到上方初始化块）
 
 // 监听选中状态，选中时聚焦输入框
 watch(() => isSelected.value, (selected) => {
@@ -608,35 +761,96 @@ const referencedAssets = computed(() => {
   return references
 })
 
+/** Windows 绝对路径 → local-upload:/// 自定义协议 URL（三斜杠标准格式） */
+function filePathToUrl(filePath: string): string {
+  if (!filePath) return filePath
+  // 已是 data: / http: / blob: / local-upload: → 原样返回
+  if (/^(data|https?|blob|local-upload):/i.test(filePath)) return filePath
+  // file:/// 旧格式 → 转为 local-upload:///
+  if (/^file:\/\/\//i.test(filePath)) {
+    return filePath.replace(/^file:\/\/\//i, 'local-upload:///')
+  }
+  // Windows 绝对路径 C:\... → local-upload:///C:/...
+  const normalized = filePath.replace(/\\/g, '/')
+  if (/^[A-Za-z]:\//.test(normalized)) {
+    return 'local-upload:///' + normalized
+  }
+  return filePath
+}
+
+// 把本地上传的素材同步到节点 data 里持久化（存文件路径，不存 data URL）
+function persistUploadedAssets() {
+  nodeStore.updateNodeData(props.id, {
+    _uploads: uploadedAssets.value.map(a => ({ id: a.id, type: a.type, url: a.url, name: a.name }))
+  })
+}
+
 // 处理文件上传
-const handleFileUpload = (event: Event) => {
+const handleFileUpload = async (event: Event) => {
+  console.log('[upload] handleFileUpload FIRED', event)
   const input = event.target as HTMLInputElement
   const files = input.files
+  console.log('[upload] files count:', files?.length)
   if (!files) return
 
-  Array.from(files).forEach(file => {
-    const url = URL.createObjectURL(file)
+  for (const file of Array.from(files)) {
     const type = file.type.startsWith('image/') ? 'image'
                 : file.type.startsWith('video/') ? 'video'
                 : 'audio'
+    if (props.type === 'ai-image' && type !== 'image') continue
 
-    // 绘图节点只接受图片
-    if (props.type === 'ai-image' && type !== 'image') {
-      return
+    const reader = new FileReader()
+    const dataUrl = await new Promise<string>((resolve) => {
+      reader.onload = () => resolve(reader.result as string)
+      reader.readAsDataURL(file)
+    })
+
+    // 落盘存储（data URL → 磁盘文件），持久化为文件路径而非 base64 巨串
+    let displayUrl = dataUrl
+    const base64 = dataUrl.includes('base64,') ? dataUrl.split('base64,')[1] : dataUrl
+    if (window.electronAPI?.upload?.save) {
+      try {
+        const savedPath = await window.electronAPI.upload.save(base64, file.name)
+        if (savedPath) {
+          displayUrl = filePathToUrl(savedPath)
+          console.log('[upload] saved to disk:', savedPath, '→', displayUrl)
+        } else {
+          console.warn('[upload] save returned null, falling back to data URL')
+        }
+      } catch (err) {
+        console.warn('[upload] save failed:', err, '- falling back to data URL')
+      }
+    } else {
+      console.warn('[upload] electronAPI.upload.save not available')
     }
 
     uploadedAssets.value.push({
       id: `asset_${Date.now()}_${Math.random()}`,
       type,
-      url,
+      url: displayUrl,
       name: file.name
     })
-  })
+    persistUploadedAssets()
+  }
 }
 
 // 移除素材
 const removeAsset = (assetId: string) => {
+  const asset = uploadedAssets.value.find(a => a.id === assetId)
+  // 清理磁盘文件（从 local-upload:/// 或 file:/// URL 反推文件路径）
+  if (asset && window.electronAPI?.upload?.delete) {
+    let filePath = ''
+    if (asset.url.startsWith('local-upload:///')) {
+      filePath = asset.url.replace('local-upload:///', '')
+    } else if (asset.url.startsWith('file:///')) {
+      filePath = asset.url.replace('file:///', '')
+    }
+    if (filePath && /^[A-Za-z]:[\/\\]/.test(filePath)) {
+      window.electronAPI.upload.delete(filePath.replace(/\//g, '\\')).catch(() => {})
+    }
+  }
   uploadedAssets.value = uploadedAssets.value.filter(a => a.id !== assetId)
+  persistUploadedAssets()
 }
 
 // 删除连接的素材（断开边连接）
@@ -650,15 +864,13 @@ const removeConnectedAsset = (assetId: string) => {
   }
 }
 
-// 加载模型列表
-onMounted(async () => {
-  availableModels.value = getVideoModels()
-  availableImageModels.value = await getImageModels()
-})
+// 加载图片节点模型（视频节点不再这里加载，availableModels 已是 computed）
+// 注：原来还有一个 onMounted 重复加载，已合并到上方初始化块
 
-// 当前选中模型的能力
+// 当前选中模型的能力（视频和图片节点共用，从 selectedProviderId + selectedModel 反查）
 const currentModelCapabilities = computed(() => {
-  const model = availableModels.value.find(m => m.id === selectedModel.value)
+  const config = aiStore.getProviderConfig(selectedProviderId.value)
+  const model = config?.models.find(m => m.id === selectedModel.value)
   return model?.capabilities
 })
 
@@ -692,6 +904,8 @@ const nodeSize = computed(() => {
   }
 
   const ratio = ratioMap[selectedRatio.value] || 16 / 9
+  // 节点尺寸完全按比例渲染（上方预览框严格匹配选中比例）
+  // 生成卡片宽度独立写死在 .generator-card，不受这里影响
   const width = Math.round(baseHeight * ratio)
 
   return { width, height: baseHeight }
@@ -805,7 +1019,14 @@ watch([hasAnyInput, hasImageInput], ([anyInput, imageInput]) => {
 })
 
 watch(() => props.data.prompt, (newPrompt) => {
-  localPrompt.value = newPrompt || ''
+  const value = newPrompt || ''
+  localPrompt.value = value
+  // 兜底：store 端数据被外部改动（粘贴恢复、撤销等）时，主动同步到 DOM。
+  // 但只在 editable 没被聚焦时同步，避免打断用户输入时的光标。
+  const el = editableRef.value
+  if (el && document.activeElement !== el && el.textContent !== value) {
+    el.innerHTML = promptTextToHtml(value)
+  }
 })
 
 const selectNode = () => {
@@ -847,21 +1068,129 @@ const closeImage = () => {
   showImageModal.value = false
 }
 
+// 下载当前预览的图片/视频到本地
+const downloadAsset = async (url: string | undefined, type: 'image' | 'video') => {
+  if (!url) return
+  try {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const blob = await res.blob()
+    const mime = blob.type || (type === 'image' ? 'image/png' : 'video/mp4')
+    const ext = (mime.split('/')[1] || (type === 'image' ? 'png' : 'mp4')).split(';')[0]
+    const d = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
+    const objectUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = objectUrl
+    a.download = `${type}_${stamp}.${ext}`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+  } catch (err) {
+    console.error('下载失败', err)
+    window.alert('下载失败：' + (err instanceof Error ? err.message : String(err)))
+  }
+}
+
 const updatePrompt = () => {
   nodeStore.updateNodeData(props.id, { prompt: localPrompt.value })
 }
 
-const executeNode = () => {
-  if (props.data.status !== 'running') {
-    nodeStore.executeNode(props.id)
+// ============= 节点内历史 =============
+// 按节点 id 过滤出本节点的生成历史；只显示与当前节点类型匹配的资产
+const nodeHistory = computed(() => {
+  const wantType = props.type === 'ai-image' ? 'image' : props.type === 'ai-video' ? 'video' : null
+  if (!wantType) return []
+  return assetStore.assetsForNode(props.id).filter((a) => a.type === wantType)
+})
+
+// 当前节点 data 上显示的输出 url（用于历史条里高亮当前那张）
+const currentOutputUrl = computed(() => {
+  if (props.type === 'ai-image') return (props.data as any).outputImage as string | undefined
+  if (props.type === 'ai-video') return (props.data as any).outputVideo as string | undefined
+  return undefined
+})
+
+// 点击历史缩略图：把节点显示切回那次生成的结果
+const switchToHistoryAsset = (asset: GeneratedAsset) => {
+  if (asset.type === 'image') {
+    nodeStore.updateNodeData(props.id, {
+      status: 'completed',
+      progress: 100,
+      outputImage: asset.url,
+      output: { url: asset.url, timestamp: asset.createdAt },
+      error: undefined,
+    })
+  } else if (asset.type === 'video') {
+    nodeStore.updateNodeData(props.id, {
+      status: 'completed',
+      progress: 100,
+      outputVideo: asset.url,
+      error: undefined,
+    })
   }
+}
+
+// 从历史里删除一条（不影响当前节点上正在显示的，除非删的就是它，
+// 那这里也清空，避免用户对不上号）
+const deleteHistoryAsset = (assetId: string) => {
+  const target = assetStore.assets.find((a) => a.id === assetId)
+  assetStore.removeAsset(assetId)
+  if (target && target.url === currentOutputUrl.value) {
+    if (props.type === 'ai-image') {
+      nodeStore.updateNodeData(props.id, { outputImage: undefined, status: 'idle' })
+    } else if (props.type === 'ai-video') {
+      nodeStore.updateNodeData(props.id, { outputVideo: undefined, status: 'idle' })
+    }
+  }
+}
+
+const onResolutionChange = (val: string) => {
+  if (val) nodeStore.updateNodeData(props.id, { resolution: val })
+}
+const onDurationChange = (val: number) => {
+  if (val != null) nodeStore.updateNodeData(props.id, { duration: val })
+}
+const onAudioChange = (val: boolean) => {
+  nodeStore.updateNodeData(props.id, { generateAudio: val })
+}
+
+// 视频/图片节点参考素材：blob:/data: URL 直接传给 store，store 调用前会上传图床转公网 URL
+const executeNode = async () => {
+  if (props.data.status === 'running') return
+
+  // 收集所有参考图 URL（不仅是第一张）
+  const refImageUrls: string[] = []
+  let inputVideo: string | undefined = undefined
+  if (props.type === 'ai-video' || props.type === 'ai-image') {
+    for (const a of allAssets.value) {
+      if (a.type === 'image' && a.url) refImageUrls.push(a.url)
+    }
+  }
+  if (props.type === 'ai-video') {
+    const refVideo = allAssets.value.find((a) => a.type === 'video' && a.url)
+    if (refVideo) inputVideo = refVideo.url
+  }
+  console.log('[executeNode] refImages:', refImageUrls.length, 'video:', !!inputVideo)
+
+  nodeStore.updateNodeData(props.id, {
+    prompt: localPrompt.value,
+    providerId: selectedProviderId.value,
+    model: selectedModel.value,
+    ratio: selectedRatio.value,
+    inputImage: refImageUrls[0],
+    inputVideo,
+    inputImages: refImageUrls,
+  } as any)
+  nodeStore.executeNode(props.id)
 }
 
 const icon = computed(() => {
   const icons: Record<string, string> = {
     'ai-image': '🎨',
     'ai-video': '🎬',
-    '3d-scene': '🎭',
     'asset-ref': '📦',
     'post-process': '⚡',
   }
@@ -975,6 +1304,34 @@ const statusText = computed(() => {
   font-size: 16px;
   color: rgba(255, 255, 255, 0.8);
   letter-spacing: 2px;
+}
+
+.error-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 16px;
+  gap: 12px;
+}
+
+.error-icon {
+  font-size: 56px;
+  color: #ff4444;
+  text-shadow: 0 0 20px rgba(255, 68, 68, 0.5);
+  line-height: 1;
+}
+
+.error-text {
+  font-size: 13px;
+  color: #ff8a8a;
+  text-align: center;
+  line-height: 1.5;
+  max-height: 80px;
+  overflow-y: auto;
+  word-break: break-word;
 }
 
 /* 生成中的动态背景 */
@@ -1108,6 +1465,38 @@ const statusText = computed(() => {
 .video-modal-close:hover {
   background: rgba(0, 217, 255, 0.4);
   transform: rotate(90deg);
+}
+
+/* 弹窗顶部工具条（下载 + 关闭） */
+.modal-toolbar {
+  position: absolute;
+  top: -50px;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 10;
+}
+.modal-download {
+  height: 40px;
+  padding: 0 16px;
+  background: rgba(0, 217, 255, 0.2);
+  border: 1px solid #00D9FF;
+  border-radius: 20px;
+  color: #00D9FF;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.modal-download:hover {
+  background: rgba(0, 217, 255, 0.4);
+  box-shadow: 0 0 12px rgba(0, 217, 255, 0.4);
+}
+/* 把已有的 close 按钮从绝对定位收回 toolbar 内 */
+.modal-toolbar .video-modal-close,
+.modal-toolbar .image-modal-close {
+  position: static;
 }
 
 /* 图片缩略图 */
@@ -1270,19 +1659,100 @@ const statusText = computed(() => {
   color: #ff4444;
 }
 
-/* 生成卡片 - 在节点下方展开 */
+/* 生成卡片 - 在节点下方展开，宽度独立于节点（节点尺寸只跟视频比例走） */
 .generator-card {
   position: absolute;
   top: calc(100% + 16px);
   left: 50%;
   transform: translateX(-50%);
-  width: 622px;
+  width: 720px;
   background: #262626;
   border: 1px solid rgba(0, 217, 255, 0.3);
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   z-index: 10;
   padding: 16px;
+}
+
+/* 历史缩略图条 */
+.history-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px;
+  margin-bottom: 10px;
+  border-bottom: 1px dashed rgba(0, 217, 255, 0.15);
+}
+.history-label {
+  font-size: 11px;
+  color: rgba(0, 217, 255, 0.6);
+  flex-shrink: 0;
+  letter-spacing: 1px;
+}
+.history-scroller {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex: 1;
+  padding-bottom: 2px;
+}
+.history-scroller::-webkit-scrollbar {
+  height: 4px;
+}
+.history-scroller::-webkit-scrollbar-thumb {
+  background: rgba(0, 217, 255, 0.3);
+  border-radius: 2px;
+}
+.history-thumb {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.3);
+  transition: border-color 0.15s, transform 0.15s;
+}
+.history-thumb:hover {
+  border-color: rgba(0, 217, 255, 0.5);
+  transform: translateY(-1px);
+}
+.history-thumb.active {
+  border-color: #00D9FF;
+  box-shadow: 0 0 8px rgba(0, 217, 255, 0.6);
+}
+.history-thumb-media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+.history-thumb-delete {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.history-thumb:hover .history-thumb-delete {
+  display: flex;
+}
+.history-thumb-delete:hover {
+  background: #ff4444;
 }
 
 .generator-content {
@@ -1657,6 +2127,7 @@ const statusText = computed(() => {
   display: flex;
   gap: 8px;
   flex: 1;
+  min-width: 0;
 }
 
 .option-btn {
@@ -1696,6 +2167,7 @@ const statusText = computed(() => {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
+  flex-shrink: 0;
   transition: all 0.3s;
   white-space: nowrap;
 }

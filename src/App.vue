@@ -113,22 +113,42 @@ const cancelEditing = () => {
 const currentRoute = computed(() => route.path)
 
 const aiStatusIndicators = computed(() => {
-  return Object.entries(aiStore.providers).map(([key, config]) => ({
-    key,
+  return aiStore.providers.map((config) => ({
+    key: config.id,
     name: config.name,
     status: config.status,
   }))
 })
 
-const navItems = [
-  { path: '/home', icon: '🏠', label: '主页' },
-  { path: '/nodes', icon: '🔷', label: '节点' },
-  { path: '/director3d', icon: '🎭', label: '3D台' },
-  { path: '/assets', icon: '📦', label: '资产' },
-  { path: '/settings', icon: '⚙️', label: '设置' },
-]
+// 底部导航：非项目上下文（主页 / 从主页进入的素材库）不显示"节点"入口
+const hideNodesTab = computed(() => {
+  if (route.path === '/home') return true
+  if (route.path === '/assets' && route.query.from === 'home') return true
+  return false
+})
+
+const navItems = computed(() => {
+  const items = [
+    { path: '/home', icon: '🏠', label: '主页' },
+  ]
+  if (!hideNodesTab.value) {
+    items.push({ path: '/nodes', icon: '🔷', label: '节点' })
+  }
+  items.push(
+    { path: '/assets', icon: '📦', label: '资产' },
+    { path: '/settings', icon: '⚙️', label: '设置' },
+  )
+  return items
+})
 
 const navigateTo = (path: string) => {
+  // 已在当前页面，不重复导航
+  if (route.path === path) return
+  // 从主页进入素材库 → 保持独立上下文（隐藏"节点"入口）
+  if (path === '/assets' && hideNodesTab.value) {
+    router.push({ path: '/assets', query: { from: 'home' } })
+    return
+  }
   router.push(path)
 }
 

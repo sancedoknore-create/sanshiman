@@ -2,7 +2,7 @@
   <div v-if="node" class="node-properties">
     <div class="properties-header">
       <h3>{{ node.data.label }}</h3>
-      <button class="close-btn" @click="$emit('close')">×</button>
+      <button class="close-btn" @click="$emit('close')"><svg viewBox="0 0 16 16" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg></button>
     </div>
 
     <div class="properties-body">
@@ -99,27 +99,6 @@
         </div>
       </template>
 
-      <!-- 3D场景节点参数 -->
-      <template v-if="node.type === '3d-scene'">
-        <div class="property-section">
-          <label>场景模板</label>
-          <select v-model="localData.sceneTemplate">
-            <option value="outdoor-street">户外街道</option>
-            <option value="indoor-room">室内房间</option>
-            <option value="studio">工作室</option>
-          </select>
-        </div>
-
-        <div class="property-section">
-          <label>灯光</label>
-          <select v-model="localData.lighting">
-            <option value="three-point">三点布光</option>
-            <option value="natural">自然光</option>
-            <option value="dramatic">戏剧光</option>
-          </select>
-        </div>
-      </template>
-
       <!-- 输出预览 -->
       <div v-if="node.data.output" class="property-section">
         <label>输出</label>
@@ -169,8 +148,6 @@ const localData = ref({
   mode: 'text-to-video',
   duration: 5,
   fps: 24,
-  sceneTemplate: 'outdoor-street',
-  lighting: 'three-point',
 })
 
 const isRunning = computed(() => props.node?.data.status === 'running')

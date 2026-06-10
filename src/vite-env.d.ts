@@ -5,7 +5,17 @@ declare module '*.vue' {
 }
 
 interface Window {
-  electronAPI: {
+  electronAPI?: {
     platform: string
+    store: {
+      get: (key: string) => Promise<string | null>
+      set: (key: string, value: string) => Promise<void>
+      delete: (key: string) => Promise<void>
+    }
+    upload: {
+      save: (base64Data: string, fileName: string) => Promise<string | null>
+      delete: (filePath: string) => Promise<boolean>
+      read: (filePath: string) => Promise<{ data: string; size: number } | null>
+    }
   }
 }

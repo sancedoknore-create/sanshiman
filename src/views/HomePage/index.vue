@@ -73,7 +73,7 @@
         <div v-if="recentProjects.length === 0" class="empty-state">
           <div class="empty-icon">📂</div>
           <p class="empty-text">还没有项目</p>
-          <button class="empty-action" @click="navigateTo('/nodes')">创建第一个项目</button>
+          <button class="empty-action" @click="openNewProjectDialog">创建第一个项目</button>
         </div>
 
         <div v-else class="projects-grid">
@@ -158,7 +158,7 @@
           <div class="modal-content" @click.stop>
             <div class="modal-header">
               <h3 class="modal-title">新建项目</h3>
-              <button class="modal-close" @click="closeNewProjectDialog">×</button>
+              <button class="modal-close" @click="closeNewProjectDialog"><svg viewBox="0 0 16 16" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg></button>
             </div>
             <div class="modal-body">
               <label class="modal-label">项目名称</label>
@@ -194,8 +194,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { useNodeStore } from '@/stores/node'
 
 const router = useRouter()
+const nodeStore = useNodeStore()
 const bgInputRef = ref<HTMLInputElement>()
 const customBackground = ref<string>('')
 const customBackgroundType = ref<'image' | 'video'>('image')
@@ -335,13 +337,6 @@ const quickCards = [
     color: 'linear-gradient(135deg, #00D9FF 0%, #B432FF 100%)',
   },
   {
-    type: '3d-scene',
-    title: '3D场景',
-    description: '3D导演台',
-    icon: '🎭',
-    color: 'linear-gradient(135deg, #B432FF 0%, #FF6B9D 100%)',
-  },
-  {
     type: 'asset-library',
     title: '素材库',
     description: '管理项目素材',
@@ -386,11 +381,26 @@ const saveProjects = () => {
 // 创建节点
 const createNode = (type: string) => {
   if (type === 'ai-short-drama') {
-    router.push({ path: '/nodes', query: { create: 'ai-video' } })
-  } else if (type === '3d-scene') {
-    router.push('/director3d')
+    // 短剧入口：自动创建一个项目 + 加入最近列表，跳转到新画布
+    const id = `project_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const proj: Project = {
+      id,
+      name: 'AI短剧',
+      updatedAt: Date.now(),
+      nodeCount: 0,
+    }
+    recentProjects.value.unshift(proj)
+    saveProjects()
+    router.push({
+      path: '/nodes',
+      query: {
+        newProject: 'true',
+        projectId: id,
+        name: encodeURIComponent(proj.name),
+      },
+    })
   } else if (type === 'asset-library') {
-    router.push('/assets')
+    router.push({ path: '/assets', query: { from: 'home' } })
   } else {
     router.push({ path: '/nodes', query: { create: type } })
   }
@@ -406,6 +416,10 @@ const deleteProject = (projectId: string) => {
   if (confirm('确定要删除这个项目吗？此操作不可撤销。')) {
     recentProjects.value = recentProjects.value.filter(p => p.id !== projectId)
     saveProjects()
+    // 同时清掉 node store 里这个项目的画布数据
+    nodeStore.deleteProject(projectId).catch((err) => {
+      console.warn('删除项目画布数据失败:', err)
+    })
   }
 }
 

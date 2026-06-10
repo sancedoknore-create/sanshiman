@@ -1,0 +1,127 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- 深空背景径向渐变：中心微亮蓝紫 → 边缘近黑 -->
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#0a1628"/>
+      <stop offset="60%" stop-color="#050a18"/>
+      <stop offset="100%" stop-color="#020308"/>
+    </radialGradient>
+
+    <!-- 外围青色节点 -->
+    <radialGradient id="nodeCyan" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#d0fbff"/>
+      <stop offset="55%" stop-color="#00D9FF"/>
+      <stop offset="100%" stop-color="#0088c7"/>
+    </radialGradient>
+
+    <!-- 中心 hub 节点：紫粉芯 -->
+    <radialGradient id="nodePurple" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="25%" stop-color="#e8c4ff"/>
+      <stop offset="60%" stop-color="#B432FF"/>
+      <stop offset="100%" stop-color="#6a00b8"/>
+    </radialGradient>
+
+    <!-- 连接线流光渐变（青→紫→青）-->
+    <linearGradient id="lineFlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00D9FF" stop-opacity="0.95"/>
+      <stop offset="50%" stop-color="#B432FF" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#00D9FF" stop-opacity="0.95"/>
+    </linearGradient>
+
+    <!-- 节点辉光 -->
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="strongGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="22" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- 连接线轻量辉光 -->
+    <filter id="lineGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- 圆角裁剪（Windows 11 风格） -->
+    <clipPath id="rounded">
+      <rect x="0" y="0" width="1024" height="1024" rx="192" ry="192"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#rounded)">
+    <!-- 深空背景 -->
+    <rect x="0" y="0" width="1024" height="1024" fill="url(#bgGrad)"/>
+
+    <!-- 背景星尘 -->
+    <g fill="#ffffff" opacity="0.55">
+      <circle cx="120" cy="180" r="2.2"/>
+      <circle cx="200" cy="450" r="1.5"/>
+      <circle cx="450" cy="150" r="2"/>
+      <circle cx="850" cy="380" r="1.6"/>
+      <circle cx="900" cy="800" r="2.2"/>
+      <circle cx="600" cy="900" r="1.5"/>
+      <circle cx="150" cy="900" r="2"/>
+      <circle cx="780" cy="100" r="1.6"/>
+      <circle cx="950" cy="520" r="1.2"/>
+      <circle cx="380" cy="850" r="1.6"/>
+      <circle cx="100" cy="600" r="1.2"/>
+      <circle cx="680" cy="780" r="1.4"/>
+      <circle cx="430" cy="350" r="1.2"/>
+    </g>
+
+    <!-- 连接线（在节点之下） -->
+    <g stroke="url(#lineFlow)" stroke-width="7" stroke-linecap="round" fill="none" filter="url(#lineGlow)">
+      <!-- 顶边: N1-N2 -->
+      <line x1="340" y1="290" x2="700" y2="250"/>
+      <!-- N1 → hub -->
+      <line x1="340" y1="290" x2="520" y2="500"/>
+      <!-- N2 → hub -->
+      <line x1="700" y1="250" x2="520" y2="500"/>
+      <!-- hub → N3 -->
+      <line x1="520" y1="500" x2="820" y2="600"/>
+      <!-- hub → N4 -->
+      <line x1="520" y1="500" x2="280" y2="720"/>
+      <!-- 底边 N4-N3 弱化 -->
+      <line x1="280" y1="720" x2="820" y2="600" stroke-opacity="0.45" stroke-width="5"/>
+    </g>
+
+    <!-- 外围 4 个青色节点 -->
+    <g filter="url(#glow)">
+      <circle cx="340" cy="290" r="46" fill="url(#nodeCyan)"/>
+      <circle cx="700" cy="250" r="46" fill="url(#nodeCyan)"/>
+      <circle cx="820" cy="600" r="46" fill="url(#nodeCyan)"/>
+      <circle cx="280" cy="720" r="46" fill="url(#nodeCyan)"/>
+    </g>
+
+    <!-- 外围节点的外圈描边（更"科技" -->
+    <g fill="none" stroke="#00D9FF" stroke-opacity="0.35" stroke-width="2">
+      <circle cx="340" cy="290" r="62"/>
+      <circle cx="700" cy="250" r="62"/>
+      <circle cx="820" cy="600" r="62"/>
+      <circle cx="280" cy="720" r="62"/>
+    </g>
+
+    <!-- 中心 hub 节点：最亮、最大 -->
+    <g filter="url(#strongGlow)">
+      <circle cx="520" cy="500" r="86" fill="url(#nodePurple)"/>
+    </g>
+    <!-- hub 内部白热核 -->
+    <circle cx="520" cy="500" r="30" fill="#ffffff" opacity="0.9"/>
+    <!-- hub 外圈双环 -->
+    <circle cx="520" cy="500" r="108" fill="none" stroke="#B432FF" stroke-opacity="0.35" stroke-width="2.5"/>
+    <circle cx="520" cy="500" r="128" fill="none" stroke="#00D9FF" stroke-opacity="0.2" stroke-width="1.5"/>
+  </g>
+</svg>
