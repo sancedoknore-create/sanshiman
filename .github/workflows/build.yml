@@ -1,4 +1,7 @@
-name: Build & Release
+
+    name: Build & Release
+permissions:
+    contents: write
 on:
     push:
       branches: [main]
