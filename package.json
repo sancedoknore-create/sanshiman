@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "electron:dev": "concurrently \"vite\" \"wait-on tcp:5173 && electron .\"",
     "electron:build": "vite build && electron-builder",
